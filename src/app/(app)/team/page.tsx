@@ -26,12 +26,13 @@ export default function TeamPage() {
     e.preventDefault()
     if (!teamName.trim()) return
     setBusy(true)
+    setError('')
     try {
       await createTeam(teamName.trim())
       setShowCreate(false)
       setTeamName('')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed')
+      setError(err instanceof Error ? err.message : 'Failed to create team')
     } finally {
       setBusy(false)
     }
