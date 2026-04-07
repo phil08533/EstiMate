@@ -207,5 +207,5 @@ create policy "Uploader can delete media"
   on storage.objects for delete
   using (
     bucket_id = 'estimate-media'
-    and owner = auth.uid()::text
+    and owner_id = auth.uid()
   );
