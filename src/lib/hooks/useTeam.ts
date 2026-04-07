@@ -68,11 +68,13 @@ export function useTeam() {
     if (error) throw error
 
     // Add creator as owner member
-    await supabase.from('team_members').insert({
+    const { error: memberError } = await supabase.from('team_members').insert({
       team_id: newTeam.id,
       user_id: user.id,
       role: 'owner',
     })
+
+    if (memberError) throw memberError
 
     await load()
     return newTeam
