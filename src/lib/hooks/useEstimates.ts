@@ -51,7 +51,7 @@ export function useEstimates(filters?: EstimateFilters) {
 
     const { data: membership } = await supabase
       .from('team_members').select('team_id').eq('user_id', user.id).limit(1).single()
-    if (!membership) throw new Error('No team')
+    if (!membership) throw new Error('No team found — visit the Team tab first')
 
     const { data, error } = await supabase
       .from('estimates')

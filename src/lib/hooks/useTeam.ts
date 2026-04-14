@@ -26,7 +26,12 @@ export function useTeam() {
       .limit(1)
       .single()
 
-    if (!membership) { setLoading(false); return }
+    if (!membership) {
+      // Auto-create a personal team so the app works immediately
+      await autoCreateTeam(user.id, user.email, user.user_metadata?.full_name)
+      await load()
+      return
+    }
 
     // Load team
     const { data: teamData } = await supabase
@@ -50,41 +55,44 @@ export function useTeam() {
       }))
     )
     setLoading(false)
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { load() }, [load])
-
-  async function createTeam(name: string) {
+  async function autoCreateTeam(userId: string, email?: string, fullName?: string) {
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error('Not authenticated')
+    const name = fullName
+      ? `${fullName}'s Team`
+      : email
+        ? `${email.split('@')[0]}'s Team`
+        : 'My Team'
 
     const { data: newTeam, error } = await supabase
       .from('teams')
-      .insert({ name, owner_id: user.id })
+      .insert({ name, owner_id: userId })
       .select()
       .single()
 
-    if (error) throw error
+    if (error || !newTeam) return
 
-    // Add creator as owner member
-    const { error: memberError } = await supabase.from('team_members').insert({
+    await supabase.from('team_members').insert({
       team_id: newTeam.id,
-      user_id: user.id,
+      user_id: userId,
       role: 'owner',
     })
+  }
 
-    if (memberError) throw memberError
+  useEffect(() => { load() }, [load])
 
-    await load()
-    return newTeam
+  async function renameTeam(name: string) {
+    const supabase = createClient()
+    if (!team) throw new Error('No team')
+    const { error } = await supabase.from('teams').update({ name }).eq('id', team.id)
+    if (error) throw error
+    setTeam(prev => prev ? { ...prev, name } : null)
   }
 
   async function inviteMember(email: string) {
     const supabase = createClient()
     if (!team) throw new Error('No team')
-
-    // This sends a magic link via Supabase admin invite
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: { emailRedirectTo: `${window.location.origin}/auth/callback?team=${team.id}` },
@@ -99,5 +107,5 @@ export function useTeam() {
     await load()
   }
 
-  return { team, members, loading, createTeam, inviteMember, removeMember, reload: load }
+  return { team, members, loading, renameTeam, inviteMember, removeMember, reload: load }
 }
