@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ClipboardList, Users, LogOut } from 'lucide-react'
+import { ClipboardList, Users, LogOut, StickyNote } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 
 export default function BottomNav() {
@@ -11,6 +11,7 @@ export default function BottomNav() {
 
   const links = [
     { href: '/estimates', label: 'Estimates', icon: ClipboardList },
+    { href: '/notes', label: 'Notes', icon: StickyNote },
     { href: '/team', label: 'Team', icon: Users },
   ]
 
