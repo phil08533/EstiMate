@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { Edit2, Phone, Mail, MapPin, MessageSquare } from 'lucide-react'
 import { useEstimate } from '@/lib/hooks/useEstimate'
@@ -13,8 +13,8 @@ import MeasurementsSection from '@/components/measurements/MeasurementsSection'
 import Spinner from '@/components/ui/Spinner'
 import type { EstimateStatus } from '@/lib/types'
 
-export default function EstimateDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
+export default function EstimateDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params
   const { estimate, loading, updateEstimate } = useEstimate(id)
   const { members } = useTeam()
   const [tab, setTab] = useState<'media' | 'measurements' | 'notes'>('media')

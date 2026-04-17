@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Trash2, Share2 } from 'lucide-react'
 import { useNote, useNotes } from '@/lib/hooks/useNotes'
@@ -9,8 +9,8 @@ import NoteShareSheet from '@/components/notes/NoteShareSheet'
 import Modal from '@/components/ui/Modal'
 import Spinner from '@/components/ui/Spinner'
 
-export default function NoteDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
+export default function NoteDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params
   const router = useRouter()
   const { note, loading, updateNote } = useNote(id)
   const { deleteNote, shareNote, shareAllNotes } = useNotes()

@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useEstimate } from '@/lib/hooks/useEstimate'
 import TopBar from '@/components/layout/TopBar'
@@ -9,8 +9,8 @@ import Textarea from '@/components/ui/Textarea'
 import Button from '@/components/ui/Button'
 import Spinner from '@/components/ui/Spinner'
 
-export default function EditEstimatePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
+export default function EditEstimatePage({ params }: { params: { id: string } }) {
+  const { id } = params
   const router = useRouter()
   const { estimate, loading, updateEstimate } = useEstimate(id)
   const [saving, setSaving] = useState(false)
