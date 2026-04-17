@@ -84,10 +84,20 @@ export interface EstimateMedia {
 }
 export type EstimateMediaInsert = Omit<EstimateMedia, 'id' | 'created_at'>
 
+export interface MeasurementGroup {
+  id: string
+  estimate_id: string
+  name: string
+  display_order: number
+  created_at: string
+}
+export type MeasurementGroupInsert = Omit<MeasurementGroup, 'id' | 'created_at'>
+
 export interface Measurement {
   id: string
   estimate_id: string
   media_id: string | null
+  group_id: string | null
   length: number
   width: number
   area: number

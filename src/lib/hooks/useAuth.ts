@@ -32,8 +32,6 @@ export function useAuth() {
   async function loadProfile(user: User) {
     const supabase = createClient()
 
-    // Upsert profile — handles the case where the signup trigger
-    // didn't fire (e.g. user signed up before migrations ran)
     const { data } = await supabase
       .from('profiles')
       .upsert({
@@ -46,7 +44,6 @@ export function useAuth() {
       .select()
       .single()
 
-    // If upsert returned nothing (row already existed), fetch it
     if (!data) {
       const { data: existing } = await supabase
         .from('profiles')
@@ -61,10 +58,23 @@ export function useAuth() {
     setLoading(false)
   }
 
+  async function updateProfile(updates: { full_name?: string }) {
+    const supabase = createClient()
+    if (!user) throw new Error('Not authenticated')
+    const { data, error } = await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('id', user.id)
+      .select()
+      .single()
+    if (error) throw error
+    setProfile(data)
+  }
+
   async function signOut() {
     const supabase = createClient()
     await supabase.auth.signOut()
   }
 
-  return { user, profile, loading, signOut }
+  return { user, profile, loading, signOut, updateProfile }
 }

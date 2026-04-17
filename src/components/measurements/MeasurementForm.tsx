@@ -9,9 +9,10 @@ import type { MeasurementInsert } from '@/lib/types'
 
 interface MeasurementFormProps {
   onAdd: (m: Omit<MeasurementInsert, 'estimate_id'>) => Promise<void>
+  compact?: boolean
 }
 
-export default function MeasurementForm({ onAdd }: MeasurementFormProps) {
+export default function MeasurementForm({ onAdd, compact = false }: MeasurementFormProps) {
   const [open, setOpen] = useState(false)
   const [label, setLabel] = useState('')
   const [length, setLength] = useState('')
@@ -26,7 +27,7 @@ export default function MeasurementForm({ onAdd }: MeasurementFormProps) {
     e.preventDefault()
     if (!l || !w || l <= 0 || w <= 0) return
     setSaving(true)
-    await onAdd({ length: l, width: w, label: label || null, media_id: null })
+    await onAdd({ length: l, width: w, label: label || null, media_id: null, group_id: null })
     setSaving(false)
     setLabel('')
     setLength('')
@@ -38,10 +39,12 @@ export default function MeasurementForm({ onAdd }: MeasurementFormProps) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 text-sm font-medium active:bg-gray-50"
+        className={`w-full flex items-center justify-center gap-2 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 text-sm font-medium active:bg-gray-50 ${
+          compact ? 'py-2' : 'py-3'
+        }`}
       >
         <Ruler className="w-4 h-4" />
-        Add measurement
+        {compact ? 'Add measurement' : 'Add measurement'}
       </button>
     )
   }

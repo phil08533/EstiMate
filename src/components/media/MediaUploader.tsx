@@ -54,7 +54,6 @@ export default function MediaUploader({ onUpload, uploading }: MediaUploaderProp
         type="file"
         accept="image/*,video/*"
         capture="environment"
-        multiple
         className="hidden"
         onChange={handleFiles}
       />

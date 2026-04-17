@@ -26,7 +26,6 @@ export function useTeam() {
       .single()
 
     if (!membership) {
-      // Ensure profile exists before creating team (Google OAuth race condition)
       await supabase.from('profiles').upsert({
         id: user.id,
         email: user.email ?? null,
@@ -51,10 +50,8 @@ export function useTeam() {
           user_id: user.id,
           role: 'owner',
         })
-        // Reload once after successful creation
         await load()
       } else {
-        // Creation failed — stop loading rather than infinite loop
         setLoading(false)
       }
       return
@@ -92,12 +89,14 @@ export function useTeam() {
     setTeam(prev => prev ? { ...prev, name } : null)
   }
 
-  async function inviteMember(email: string) {
+  async function inviteMember(email: string, role: 'member' | 'viewer' = 'member') {
     const supabase = createClient()
     if (!team) throw new Error('No team')
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback?team=${team.id}` },
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback?team=${team.id}&role=${role}`,
+      },
     })
     if (error) throw error
   }
@@ -109,5 +108,16 @@ export function useTeam() {
     await load()
   }
 
-  return { team, members, loading, renameTeam, inviteMember, removeMember, reload: load }
+  async function changeMemberRole(userId: string, role: 'member' | 'viewer') {
+    const supabase = createClient()
+    if (!team) throw new Error('No team')
+    await supabase
+      .from('team_members')
+      .update({ role })
+      .eq('team_id', team.id)
+      .eq('user_id', userId)
+    setMembers(prev => prev.map(m => m.user_id === userId ? { ...m, role } : m))
+  }
+
+  return { team, members, loading, renameTeam, inviteMember, removeMember, changeMemberRole, reload: load }
 }
