@@ -25,7 +25,25 @@ export function useNotes() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setLoading(false); return }
 
-    const teamId = await getTeamId()
+    let teamId = await getTeamId()
+
+    // Auto-create team if none exists
+    if (!teamId) {
+      await supabase.from('profiles').upsert({
+        id: user.id,
+        email: user.email ?? null,
+        full_name: user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? null,
+      }, { onConflict: 'id', ignoreDuplicates: true })
+      const name = user.user_metadata?.full_name
+        ? `${user.user_metadata.full_name}'s Team`
+        : user.email ? `${user.email.split('@')[0]}'s Team` : 'My Team'
+      const { data: newTeam } = await supabase.from('teams').insert({ name, owner_id: user.id }).select().single()
+      if (newTeam) {
+        await supabase.from('team_members').insert({ team_id: newTeam.id, user_id: user.id, role: 'owner' })
+        teamId = newTeam.id
+      }
+    }
+
     if (!teamId) { setLoading(false); return }
 
     const { data } = await supabase
