@@ -18,7 +18,6 @@ export function useTeam() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setLoading(false); return }
 
-    // Get user's team membership
     const { data: membership } = await supabase
       .from('team_members')
       .select('team_id')
@@ -27,13 +26,40 @@ export function useTeam() {
       .single()
 
     if (!membership) {
-      // Auto-create a personal team so the app works immediately
-      await autoCreateTeam(user.id, user.email, user.user_metadata?.full_name)
-      await load()
+      // Ensure profile exists before creating team (Google OAuth race condition)
+      await supabase.from('profiles').upsert({
+        id: user.id,
+        email: user.email ?? null,
+        full_name: user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? null,
+      }, { onConflict: 'id', ignoreDuplicates: true })
+
+      const name = user.user_metadata?.full_name
+        ? `${user.user_metadata.full_name}'s Team`
+        : user.email
+          ? `${user.email.split('@')[0]}'s Team`
+          : 'My Team'
+
+      const { data: newTeam } = await supabase
+        .from('teams')
+        .insert({ name, owner_id: user.id })
+        .select()
+        .single()
+
+      if (newTeam) {
+        await supabase.from('team_members').insert({
+          team_id: newTeam.id,
+          user_id: user.id,
+          role: 'owner',
+        })
+        // Reload once after successful creation
+        await load()
+      } else {
+        // Creation failed — stop loading rather than infinite loop
+        setLoading(false)
+      }
       return
     }
 
-    // Load team
     const { data: teamData } = await supabase
       .from('teams')
       .select('*')
@@ -42,7 +68,6 @@ export function useTeam() {
 
     setTeam(teamData)
 
-    // Load members with profiles
     const { data: membersData } = await supabase
       .from('team_members')
       .select('*, profile:profiles(*)')
@@ -56,29 +81,6 @@ export function useTeam() {
     )
     setLoading(false)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  async function autoCreateTeam(userId: string, email?: string, fullName?: string) {
-    const supabase = createClient()
-    const name = fullName
-      ? `${fullName}'s Team`
-      : email
-        ? `${email.split('@')[0]}'s Team`
-        : 'My Team'
-
-    const { data: newTeam, error } = await supabase
-      .from('teams')
-      .insert({ name, owner_id: userId })
-      .select()
-      .single()
-
-    if (error || !newTeam) return
-
-    await supabase.from('team_members').insert({
-      team_id: newTeam.id,
-      user_id: userId,
-      role: 'owner',
-    })
-  }
 
   useEffect(() => { load() }, [load])
 

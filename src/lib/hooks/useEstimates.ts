@@ -49,9 +49,27 @@ export function useEstimates(filters?: EstimateFilters) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error('Not authenticated')
 
-    const { data: membership } = await supabase
+    let { data: membership } = await supabase
       .from('team_members').select('team_id').eq('user_id', user.id).limit(1).single()
-    if (!membership) throw new Error('No team found — visit the Team tab first')
+
+    // Auto-create a personal team if none exists (solo user flow)
+    if (!membership) {
+      await supabase.from('profiles').upsert({
+        id: user.id,
+        email: user.email ?? null,
+        full_name: user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? null,
+      }, { onConflict: 'id', ignoreDuplicates: true })
+      const name = user.user_metadata?.full_name
+        ? `${user.user_metadata.full_name}'s Team`
+        : user.email ? `${user.email.split('@')[0]}'s Team` : 'My Team'
+      const { data: newTeam } = await supabase.from('teams').insert({ name, owner_id: user.id }).select().single()
+      if (newTeam) {
+        await supabase.from('team_members').insert({ team_id: newTeam.id, user_id: user.id, role: 'owner' })
+        membership = { team_id: newTeam.id }
+      }
+    }
+
+    if (!membership) throw new Error('Could not set up your account. Please try again.')
 
     const { data, error } = await supabase
       .from('estimates')
