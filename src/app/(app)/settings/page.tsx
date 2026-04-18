@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Building2, Users, Wrench, LogOut, ChevronRight, HelpCircle } from 'lucide-react'
+import { Building2, Users, Wrench, LogOut, ChevronRight, HelpCircle, BarChart2, UserCog, StickyNote, BookOpen } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import TopBar from '@/components/layout/TopBar'
 
@@ -29,6 +29,34 @@ export default function SettingsPage() {
       label: 'Equipment',
       description: 'Inventory, maintenance logs, costs',
       color: 'text-orange-600 bg-orange-50',
+    },
+    {
+      href: '/employees',
+      icon: UserCog,
+      label: 'Employees',
+      description: 'Org tree, roles, pay rates, time tracking',
+      color: 'text-teal-600 bg-teal-50',
+    },
+    {
+      href: '/analytics',
+      icon: BarChart2,
+      label: 'Analytics',
+      description: 'YTD P&L, win rate, monthly trends',
+      color: 'text-amber-600 bg-amber-50',
+    },
+    {
+      href: '/notes',
+      icon: StickyNote,
+      label: 'Notes',
+      description: 'Daily notes and team notes',
+      color: 'text-yellow-600 bg-yellow-50',
+    },
+    {
+      href: '/resources',
+      icon: BookOpen,
+      label: 'Resources',
+      description: 'Tax reference, tips, material calculator',
+      color: 'text-cyan-600 bg-cyan-50',
     },
     {
       href: '/help',

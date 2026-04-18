@@ -309,6 +309,103 @@ export interface TemplateLineItem {
 }
 export type TemplateLineItemInsert = Omit<TemplateLineItem, 'id' | 'created_at'>
 
+// ─── CRM ─────────────────────────────────────────────────────────────────────
+
+export type LeadStage = 'new_lead' | 'estimate_scheduled' | 'proposal_sent' | 'won' | 'lost'
+
+export interface Customer {
+  id: string
+  team_id: string
+  created_by: string
+  full_name: string
+  email: string | null
+  phone: string | null
+  address: string | null
+  city: string | null
+  state: string | null
+  zip: string | null
+  tags: string[] | null
+  notes: string | null
+  source: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+export type CustomerInsert = Omit<Customer, 'id' | 'created_at' | 'updated_at'>
+
+export interface Lead {
+  id: string
+  team_id: string
+  created_by: string
+  customer_id: string | null
+  full_name: string
+  email: string | null
+  phone: string | null
+  address: string | null
+  service_interest: string | null
+  notes: string | null
+  source: string | null
+  stage: LeadStage
+  estimated_value: number | null
+  assigned_to: string | null
+  follow_up_date: string | null
+  created_at: string
+  updated_at: string
+}
+export type LeadInsert = Omit<Lead, 'id' | 'created_at' | 'updated_at'>
+
+export type ContactLogType = 'call' | 'email' | 'text' | 'visit' | 'note'
+
+export interface ContactLog {
+  id: string
+  team_id: string
+  customer_id: string | null
+  lead_id: string | null
+  created_by: string
+  log_type: ContactLogType
+  summary: string
+  created_at: string
+}
+export type ContactLogInsert = Omit<ContactLog, 'id' | 'created_at'>
+
+// ─── Employees ────────────────────────────────────────────────────────────────
+
+export type EmployeeRole = 'owner' | 'manager' | 'estimator' | 'crew_lead' | 'crew_member' | 'office' | 'subcontractor'
+export type PayType = 'hourly' | 'salary'
+
+export interface Employee {
+  id: string
+  team_id: string
+  profile_id: string | null
+  manager_id: string | null
+  first_name: string
+  last_name: string
+  email: string | null
+  phone: string | null
+  role: EmployeeRole
+  pay_rate: number | null
+  pay_type: PayType
+  hire_date: string | null
+  is_active: boolean
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+export type EmployeeInsert = Omit<Employee, 'id' | 'created_at' | 'updated_at'>
+
+export interface TimeEntry {
+  id: string
+  team_id: string
+  employee_id: string
+  estimate_id: string | null
+  clock_in: string
+  clock_out: string | null
+  break_mins: number
+  notes: string | null
+  created_at: string
+}
+export type TimeEntryInsert = Omit<TimeEntry, 'id' | 'created_at'>
+
 // ─── Sort / filter types ───────────────────────────────────────────────────────
 export type SortField = 'customer_name' | 'status' | 'created_at' | 'updated_at' | 'total_area'
 export type SortDirection = 'asc' | 'desc'
