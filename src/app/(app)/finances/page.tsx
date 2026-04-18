@@ -1,12 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Trash2, TrendingDown } from 'lucide-react'
+import { Plus, Trash2, TrendingDown, TrendingUp, DollarSign } from 'lucide-react'
 import { useExpenses } from '@/lib/hooks/useExpenses'
+import { useRevenue } from '@/lib/hooks/useRevenue'
 import TopBar from '@/components/layout/TopBar'
 import Spinner from '@/components/ui/Spinner'
 import Button from '@/components/ui/Button'
-import type { ExpenseCategory } from '@/lib/types'
+import type { ExpenseCategory, PaymentMethod } from '@/lib/types'
+
+type FinanceTab = 'overview' | 'revenue' | 'expenses'
 
 const CATEGORIES: { value: ExpenseCategory; label: string; color: string }[] = [
   { value: 'materials', label: 'Materials', color: 'bg-green-100 text-green-800' },
@@ -21,6 +24,10 @@ const CATEGORIES: { value: ExpenseCategory; label: string; color: string }[] = [
   { value: 'other', label: 'Other', color: 'bg-gray-100 text-gray-600' },
 ]
 
+const METHOD_LABELS: Record<PaymentMethod, string> = {
+  cash: 'Cash', check: 'Check', card: 'Card', bank_transfer: 'Bank Transfer', other: 'Other',
+}
+
 function catColor(cat: ExpenseCategory) {
   return CATEGORIES.find(c => c.value === cat)?.color ?? 'bg-gray-100 text-gray-600'
 }
@@ -32,11 +39,11 @@ function fmt(n: number) {
   return n.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
 }
 
-function groupByMonth(expenses: ReturnType<typeof useExpenses>['expenses']) {
-  const map: Record<string, typeof expenses> = {}
-  for (const e of expenses) {
-    const key = e.expense_date.slice(0, 7) // YYYY-MM
-    ;(map[key] = map[key] ?? []).push(e)
+function groupByMonth<T>(items: T[], getDate: (item: T) => string): [string, T[]][] {
+  const map: Record<string, T[]> = {}
+  for (const item of items) {
+    const key = getDate(item).slice(0, 7)
+    ;(map[key] = map[key] ?? []).push(item)
   }
   return Object.entries(map).sort((a, b) => b[0].localeCompare(a[0]))
 }
@@ -47,7 +54,9 @@ function formatMonth(ym: string) {
 }
 
 export default function FinancesPage() {
-  const { expenses, loading, addExpense, deleteExpense } = useExpenses()
+  const { expenses, loading: expLoading, addExpense, deleteExpense } = useExpenses()
+  const { payments, loading: revLoading, totalRevenue } = useRevenue()
+  const [tab, setTab] = useState<FinanceTab>('overview')
   const [showForm, setShowForm] = useState(false)
   const [desc, setDesc] = useState('')
   const [amount, setAmount] = useState('')
@@ -56,15 +65,18 @@ export default function FinancesPage() {
   const [vendor, setVendor] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0)
+  const loading = expLoading || revLoading
 
-  // Breakdown by category
+  const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0)
+  const netProfit = totalRevenue - totalExpenses
+
   const byCategory = expenses.reduce<Partial<Record<ExpenseCategory, number>>>((acc, e) => {
     acc[e.category] = (acc[e.category] ?? 0) + e.amount
     return acc
   }, {})
 
-  const grouped = groupByMonth(expenses)
+  const groupedExpenses = groupByMonth(expenses, e => e.expense_date)
+  const groupedRevenue = groupByMonth(payments, p => p.payment_date)
 
   async function handleAdd(ev: React.FormEvent) {
     ev.preventDefault()
@@ -90,136 +102,233 @@ export default function FinancesPage() {
   return (
     <>
       <TopBar title="Finances" />
-      <div className="p-4 space-y-4 pb-28">
-
-        {/* Summary card */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-4">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Expense Overview</p>
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-              <TrendingDown className="w-6 h-6 text-red-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">{fmt(totalExpenses)}</p>
-              <p className="text-xs text-gray-400">Total expenses · {expenses.length} entries</p>
-            </div>
-          </div>
-
-          {Object.keys(byCategory).length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {(Object.entries(byCategory) as [ExpenseCategory, number][])
-                .sort((a, b) => b[1] - a[1])
-                .map(([cat, total]) => (
-                  <div key={cat} className={`px-3 py-1.5 rounded-xl text-xs font-semibold ${catColor(cat)}`}>
-                    {catLabel(cat)}: {fmt(total)}
-                  </div>
-                ))}
-            </div>
-          )}
+      <div className="pb-28">
+        {/* Tab bar */}
+        <div className="sticky top-0 z-10 bg-white border-b border-gray-200 flex">
+          {(['overview', 'revenue', 'expenses'] as FinanceTab[]).map(t => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`flex-1 py-3 text-sm font-medium capitalize transition-colors ${
+                tab === t ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-gray-500'
+              }`}
+            >
+              {t}
+            </button>
+          ))}
         </div>
 
-        {/* Add expense */}
-        {showForm ? (
-          <form onSubmit={handleAdd} className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3">
-            <p className="font-semibold text-gray-900">Add Expense</p>
-            <input
-              autoFocus
-              value={desc}
-              onChange={e => setDesc(e.target.value)}
-              placeholder="Description"
-              className="w-full px-3 py-2.5 rounded-xl border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                value={amount}
-                onChange={e => setAmount(e.target.value)}
-                type="number"
-                inputMode="decimal"
-                placeholder="Amount ($)"
-                className="px-3 py-2.5 rounded-xl border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <input
-                value={date}
-                onChange={e => setDate(e.target.value)}
-                type="date"
-                className="px-3 py-2.5 rounded-xl border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <input
-              value={vendor}
-              onChange={e => setVendor(e.target.value)}
-              placeholder="Vendor (optional)"
-              className="w-full px-3 py-2.5 rounded-xl border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <div>
-              <p className="text-xs font-medium text-gray-500 mb-2">Category</p>
-              <div className="flex flex-wrap gap-2">
-                {CATEGORIES.map(c => (
-                  <button
-                    key={c.value}
-                    type="button"
-                    onClick={() => setCategory(c.value)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
-                      category === c.value ? 'bg-blue-600 text-white border-blue-600' : `${c.color} border-transparent`
-                    }`}
-                  >
-                    {c.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button type="submit" loading={saving} disabled={!desc.trim() || !amount} className="flex-1">Add</Button>
-              <Button type="button" variant="secondary" onClick={() => setShowForm(false)} className="flex-1">Cancel</Button>
-            </div>
-          </form>
-        ) : (
-          <button
-            onClick={() => setShowForm(true)}
-            className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-gray-300 rounded-2xl text-gray-500 font-medium active:bg-gray-50"
-          >
-            <Plus className="w-5 h-5" />
-            Add expense
-          </button>
-        )}
-
-        {/* Grouped by month */}
-        {grouped.map(([month, items]) => {
-          const monthTotal = items.reduce((s, e) => s + e.amount, 0)
-          return (
-            <div key={month}>
-              <div className="flex items-center justify-between px-1 mb-2">
-                <h3 className="text-sm font-semibold text-gray-500">{formatMonth(month)}</h3>
-                <span className="text-sm font-bold text-red-600">{fmt(monthTotal)}</span>
-              </div>
-              <div className="space-y-2">
-                {items.map(e => (
-                  <div key={e.id} className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-lg text-xs font-semibold flex-shrink-0 ${catColor(e.category)}`}>
-                      {catLabel(e.category)}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-800 truncate">{e.description}</p>
-                      {e.vendor && <p className="text-xs text-gray-400 truncate">{e.vendor}</p>}
-                    </div>
-                    <p className="text-sm font-semibold text-gray-900 flex-shrink-0">{fmt(e.amount)}</p>
-                    <button onClick={() => deleteExpense(e.id)} className="p-1.5 text-gray-400 active:text-red-500 rounded-lg">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+        <div className="p-4 space-y-4">
+          {/* ── OVERVIEW ── */}
+          {tab === 'overview' && (
+            <>
+              {/* P&L Summary */}
+              <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">P&L Overview</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-green-50 rounded-xl p-3 text-center">
+                    <TrendingUp className="w-5 h-5 text-green-600 mx-auto mb-1" />
+                    <p className="text-xs text-green-700 font-medium">Revenue</p>
+                    <p className="font-bold text-green-800 text-sm">{fmt(totalRevenue)}</p>
                   </div>
-                ))}
+                  <div className="bg-red-50 rounded-xl p-3 text-center">
+                    <TrendingDown className="w-5 h-5 text-red-500 mx-auto mb-1" />
+                    <p className="text-xs text-red-600 font-medium">Expenses</p>
+                    <p className="font-bold text-red-700 text-sm">{fmt(totalExpenses)}</p>
+                  </div>
+                  <div className={`rounded-xl p-3 text-center ${netProfit >= 0 ? 'bg-blue-50' : 'bg-orange-50'}`}>
+                    <DollarSign className={`w-5 h-5 mx-auto mb-1 ${netProfit >= 0 ? 'text-blue-600' : 'text-orange-500'}`} />
+                    <p className={`text-xs font-medium ${netProfit >= 0 ? 'text-blue-700' : 'text-orange-600'}`}>Net</p>
+                    <p className={`font-bold text-sm ${netProfit >= 0 ? 'text-blue-800' : 'text-orange-700'}`}>{fmt(netProfit)}</p>
+                  </div>
+                </div>
               </div>
-            </div>
-          )
-        })}
 
-        {expenses.length === 0 && !showForm && (
-          <div className="text-center py-12">
-            <div className="text-4xl mb-3">📋</div>
-            <p className="text-gray-500 font-medium">No expenses yet</p>
-            <p className="text-gray-400 text-sm mt-1">Track materials, fuel, equipment, and more</p>
-          </div>
-        )}
+              {/* Category breakdown */}
+              {Object.keys(byCategory).length > 0 && (
+                <div className="bg-white border border-gray-200 rounded-2xl p-4">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Expenses by Category</p>
+                  <div className="space-y-2">
+                    {(Object.entries(byCategory) as [ExpenseCategory, number][])
+                      .sort((a, b) => b[1] - a[1])
+                      .map(([cat, total]) => (
+                        <div key={cat} className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded-lg text-xs font-semibold flex-shrink-0 ${catColor(cat)}`}>
+                            {catLabel(cat)}
+                          </span>
+                          <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                            <div
+                              className="bg-blue-500 h-full rounded-full"
+                              style={{ width: `${totalExpenses > 0 ? (total / totalExpenses) * 100 : 0}%` }}
+                            />
+                          </div>
+                          <span className="text-xs font-semibold text-gray-700 flex-shrink-0">{fmt(total)}</span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ── REVENUE ── */}
+          {tab === 'revenue' && (
+            <>
+              <div className="bg-green-50 border border-green-200 rounded-2xl p-4 flex items-center gap-3">
+                <TrendingUp className="w-8 h-8 text-green-600 flex-shrink-0" />
+                <div>
+                  <p className="text-2xl font-bold text-green-800">{fmt(totalRevenue)}</p>
+                  <p className="text-xs text-green-600">{payments.length} payments received</p>
+                </div>
+              </div>
+
+              {payments.length === 0 && (
+                <div className="text-center py-12 text-gray-400 text-sm">
+                  <p>No payments recorded yet.</p>
+                  <p className="mt-1">Record payments on the Payments tab of each estimate.</p>
+                </div>
+              )}
+
+              {groupedRevenue.map(([month, items]) => {
+                const monthTotal = items.reduce((s, p) => s + p.amount, 0)
+                return (
+                  <div key={month}>
+                    <div className="flex items-center justify-between px-1 mb-2">
+                      <h3 className="text-sm font-semibold text-gray-500">{formatMonth(month)}</h3>
+                      <span className="text-sm font-bold text-green-600">{fmt(monthTotal)}</span>
+                    </div>
+                    <div className="space-y-2">
+                      {items.map(p => (
+                        <div key={p.id} className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3">
+                          <DollarSign className="w-4 h-4 text-green-600 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-gray-900">{fmt(p.amount)}</p>
+                            <p className="text-xs text-gray-400">{METHOD_LABELS[p.payment_method]} · {p.payment_date}</p>
+                            {p.notes && <p className="text-xs text-gray-500 truncate">{p.notes}</p>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </>
+          )}
+
+          {/* ── EXPENSES ── */}
+          {tab === 'expenses' && (
+            <>
+              <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center gap-3">
+                <TrendingDown className="w-8 h-8 text-red-500 flex-shrink-0" />
+                <div>
+                  <p className="text-2xl font-bold text-red-700">{fmt(totalExpenses)}</p>
+                  <p className="text-xs text-red-500">{expenses.length} expense entries</p>
+                </div>
+              </div>
+
+              {showForm ? (
+                <form onSubmit={handleAdd} className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3">
+                  <p className="font-semibold text-gray-900">Add Expense</p>
+                  <input
+                    autoFocus
+                    value={desc}
+                    onChange={e => setDesc(e.target.value)}
+                    placeholder="Description"
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      value={amount}
+                      onChange={e => setAmount(e.target.value)}
+                      type="number"
+                      inputMode="decimal"
+                      placeholder="Amount ($)"
+                      className="px-3 py-2.5 rounded-xl border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <input
+                      value={date}
+                      onChange={e => setDate(e.target.value)}
+                      type="date"
+                      className="px-3 py-2.5 rounded-xl border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <input
+                    value={vendor}
+                    onChange={e => setVendor(e.target.value)}
+                    placeholder="Vendor (optional)"
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 mb-2">Category</p>
+                    <div className="flex flex-wrap gap-2">
+                      {CATEGORIES.map(c => (
+                        <button
+                          key={c.value}
+                          type="button"
+                          onClick={() => setCategory(c.value)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                            category === c.value ? 'bg-blue-600 text-white border-blue-600' : `${c.color} border-transparent`
+                          }`}
+                        >
+                          {c.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button type="submit" loading={saving} disabled={!desc.trim() || !amount} className="flex-1">Add</Button>
+                    <Button type="button" variant="secondary" onClick={() => setShowForm(false)} className="flex-1">Cancel</Button>
+                  </div>
+                </form>
+              ) : (
+                <button
+                  onClick={() => setShowForm(true)}
+                  className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-gray-300 rounded-2xl text-gray-500 font-medium active:bg-gray-50"
+                >
+                  <Plus className="w-5 h-5" />
+                  Add expense
+                </button>
+              )}
+
+              {groupedExpenses.map(([month, items]) => {
+                const monthTotal = items.reduce((s, e) => s + e.amount, 0)
+                return (
+                  <div key={month}>
+                    <div className="flex items-center justify-between px-1 mb-2">
+                      <h3 className="text-sm font-semibold text-gray-500">{formatMonth(month)}</h3>
+                      <span className="text-sm font-bold text-red-600">{fmt(monthTotal)}</span>
+                    </div>
+                    <div className="space-y-2">
+                      {items.map(e => (
+                        <div key={e.id} className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3">
+                          <span className={`px-2 py-0.5 rounded-lg text-xs font-semibold flex-shrink-0 ${catColor(e.category)}`}>
+                            {catLabel(e.category)}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-800 truncate">{e.description}</p>
+                            {e.vendor && <p className="text-xs text-gray-400 truncate">{e.vendor}</p>}
+                          </div>
+                          <p className="text-sm font-semibold text-gray-900 flex-shrink-0">{fmt(e.amount)}</p>
+                          <button onClick={() => deleteExpense(e.id)} className="p-1.5 text-gray-400 active:text-red-500 rounded-lg">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+
+              {expenses.length === 0 && !showForm && (
+                <div className="text-center py-12">
+                  <div className="text-4xl mb-3">📋</div>
+                  <p className="text-gray-500 font-medium">No expenses yet</p>
+                  <p className="text-gray-400 text-sm mt-1">Track materials, fuel, equipment, and more</p>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </>
   )

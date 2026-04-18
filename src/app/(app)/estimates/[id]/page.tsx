@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Edit2, Phone, Mail, MapPin, MessageSquare, FileText } from 'lucide-react'
+import { Edit2, Phone, Mail, MapPin, MessageSquare, FileText, Calendar } from 'lucide-react'
 import { useEstimate } from '@/lib/hooks/useEstimate'
 import { useTeam } from '@/lib/hooks/useTeam'
 import TopBar from '@/components/layout/TopBar'
@@ -104,6 +104,26 @@ export default function EstimateDetailPage({ params }: { params: { id: string } 
               <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
               {estimate.customer_address}
             </div>
+          )}
+        </div>
+
+        {/* Follow-up date */}
+        <div className="flex items-center gap-3 bg-white rounded-2xl border border-gray-200 px-4 py-3">
+          <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
+          <span className="text-sm text-gray-600 flex-shrink-0">Follow-up date</span>
+          <input
+            type="date"
+            value={estimate.follow_up_date ?? ''}
+            onChange={e => updateEstimate({ follow_up_date: e.target.value || null })}
+            className="flex-1 text-sm text-gray-800 outline-none bg-transparent min-w-0"
+          />
+          {estimate.follow_up_date && (
+            <button
+              onClick={() => updateEstimate({ follow_up_date: null })}
+              className="text-xs text-gray-400 active:text-red-400 flex-shrink-0"
+            >
+              Clear
+            </button>
           )}
         </div>
 

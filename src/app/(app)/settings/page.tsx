@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Building2, Users, Wrench, LogOut, ChevronRight } from 'lucide-react'
+import { Building2, Users, Wrench, LogOut, ChevronRight, HelpCircle } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import TopBar from '@/components/layout/TopBar'
 
@@ -29,6 +29,13 @@ export default function SettingsPage() {
       label: 'Equipment',
       description: 'Inventory, maintenance logs, costs',
       color: 'text-orange-600 bg-orange-50',
+    },
+    {
+      href: '/help',
+      icon: HelpCircle,
+      label: 'How to Use',
+      description: 'Searchable guide to all features',
+      color: 'text-emerald-600 bg-emerald-50',
     },
   ]
 

@@ -67,6 +67,7 @@ export interface Estimate {
   comments: string | null
   status: EstimateStatus
   total_area: number
+  follow_up_date: string | null
   created_at: string
   updated_at: string
 }
@@ -282,6 +283,31 @@ export interface EquipmentLog {
   created_at: string
 }
 export type EquipmentLogInsert = Omit<EquipmentLog, 'id' | 'created_at'>
+
+// ─── Estimate templates ───────────────────────────────────────────────────────
+
+export interface EstimateTemplate {
+  id: string
+  team_id: string
+  created_by: string
+  name: string
+  description: string | null
+  created_at: string
+}
+export type EstimateTemplateInsert = Omit<EstimateTemplate, 'id' | 'created_at'>
+
+export interface TemplateLineItem {
+  id: string
+  template_id: string
+  description: string
+  quantity: number
+  unit_price: number
+  unit: string
+  tax_exempt: boolean
+  sort_order: number
+  created_at: string
+}
+export type TemplateLineItemInsert = Omit<TemplateLineItem, 'id' | 'created_at'>
 
 // ─── Sort / filter types ───────────────────────────────────────────────────────
 export type SortField = 'customer_name' | 'status' | 'created_at' | 'updated_at' | 'total_area'

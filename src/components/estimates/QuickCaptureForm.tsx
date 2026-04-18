@@ -39,6 +39,7 @@ export default function QuickCaptureForm() {
         customer_address: form.customer_address || null,
         comments: form.comments || null,
         assigned_to: null,
+        follow_up_date: null,
         status: 'need_to_estimate',
       })
       router.push(`/estimates/${est.id}`)

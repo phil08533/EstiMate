@@ -1,10 +1,16 @@
 import Link from 'next/link'
-import { MapPin, Phone, UserCircle, Ruler } from 'lucide-react'
+import { MapPin, Phone, UserCircle, Ruler, Clock, AlertTriangle } from 'lucide-react'
 import EstimateStatusBadge from './EstimateStatusBadge'
 import { formatDateRelative, formatArea } from '@/lib/utils/format'
 import type { EstimateWithProfiles } from '@/lib/types'
 
+const today = new Date().toISOString().split('T')[0]
+
 export default function EstimateCard({ estimate }: { estimate: EstimateWithProfiles }) {
+  const followUp = estimate.follow_up_date
+  const isOverdue = followUp && followUp < today
+  const isDueToday = followUp === today
+
   return (
     <Link
       href={`/estimates/${estimate.id}`}
@@ -14,7 +20,21 @@ export default function EstimateCard({ estimate }: { estimate: EstimateWithProfi
         <h3 className="font-semibold text-gray-900 text-base leading-tight">
           {estimate.customer_name}
         </h3>
-        <EstimateStatusBadge status={estimate.status} />
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {isOverdue && (
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-semibold bg-red-100 text-red-700">
+              <AlertTriangle className="w-3 h-3" />
+              Follow up
+            </span>
+          )}
+          {isDueToday && (
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-semibold bg-orange-100 text-orange-700">
+              <Clock className="w-3 h-3" />
+              Today
+            </span>
+          )}
+          <EstimateStatusBadge status={estimate.status} />
+        </div>
       </div>
 
       {estimate.customer_address && (
