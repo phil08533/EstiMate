@@ -49,6 +49,9 @@ export default function EquipmentPage() {
       description: form.description || null,
       notes: form.notes || null,
       status: form.status,
+      category: null,
+      useful_life_years: null,
+      salvage_value: null,
     })
     setSaving(false)
     setForm({ name: '', make: '', model: '', year: '', serial_number: '', purchase_date: '', purchase_price: '', description: '', notes: '', status: 'active' })

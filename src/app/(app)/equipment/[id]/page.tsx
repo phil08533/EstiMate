@@ -126,6 +126,74 @@ export default function EquipmentDetailPage({ params }: { params: { id: string }
           )}
         </div>
 
+        {/* Depreciation card */}
+        {item.purchase_price && item.purchase_date && (() => {
+          const lifeYears = item.useful_life_years ?? 8
+          const salvage = item.salvage_value ?? 0
+          const purchaseYear = parseInt(item.purchase_date!.slice(0, 4))
+          const ageYears = new Date().getFullYear() - purchaseYear
+          const annualDepr = (item.purchase_price - salvage) / lifeYears
+          const bookValue = Math.max(salvage, item.purchase_price - annualDepr * ageYears)
+          const pctDepreciated = Math.min(100, Math.round((ageYears / lifeYears) * 100))
+          const replaceYear = purchaseYear + lifeYears
+          const shouldReplace = ageYears >= lifeYears * 0.85
+
+          return (
+            <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Depreciation</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-gray-50 rounded-xl p-3">
+                  <p className="text-xs text-gray-400">Book Value</p>
+                  <p className="font-bold text-gray-900">${Math.round(bookValue).toLocaleString()}</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-3">
+                  <p className="text-xs text-gray-400">Age / Life</p>
+                  <p className="font-bold text-gray-900">{ageYears}yr / {lifeYears}yr</p>
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between text-xs text-gray-500 mb-1">
+                  <span>Depreciated</span>
+                  <span>{pctDepreciated}%</span>
+                </div>
+                <div className="bg-gray-100 rounded-full h-2">
+                  <div
+                    className={`h-2 rounded-full ${pctDepreciated >= 85 ? 'bg-red-500' : pctDepreciated >= 60 ? 'bg-amber-400' : 'bg-green-500'}`}
+                    style={{ width: `${pctDepreciated}%` }}
+                  />
+                </div>
+              </div>
+              {shouldReplace ? (
+                <div className="bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+                  <p className="text-xs font-semibold text-red-700">⚠️ Recommend replacing — past {pctDepreciated}% of useful life</p>
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400">Est. replacement year: {replaceYear}</p>
+              )}
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <p className="text-xs text-gray-400 mb-1">Useful life (yrs)</p>
+                  <input
+                    type="number"
+                    defaultValue={lifeYears}
+                    onBlur={e => updateEquipment(id, { useful_life_years: parseInt(e.target.value) || 8 })}
+                    className="w-full px-3 py-1.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-gray-400 mb-1">Salvage value ($)</p>
+                  <input
+                    type="number"
+                    defaultValue={salvage}
+                    onBlur={e => updateEquipment(id, { salvage_value: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-3 py-1.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+            </div>
+          )
+        })()}
+
         {/* Log entries */}
         <div className="flex items-center justify-between px-1">
           <h3 className="font-semibold text-gray-900">Activity Log</h3>

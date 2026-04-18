@@ -152,7 +152,13 @@ function GroupCard({
   )
 }
 
-export default function MeasurementsSection({ estimateId }: { estimateId: string }) {
+export default function MeasurementsSection({
+  estimateId,
+  onImportToQuote,
+}: {
+  estimateId: string
+  onImportToQuote?: (items: { description: string; quantity: number; unit: string }[]) => Promise<void>
+}) {
   const {
     measurements, groups, loading, totalArea,
     addMeasurement, deleteMeasurement, moveMeasurement,
@@ -161,12 +167,25 @@ export default function MeasurementsSection({ estimateId }: { estimateId: string
 
   const [addingGroup, setAddingGroup] = useState(false)
   const [newGroupName, setNewGroupName] = useState('')
+  const [importing, setImporting] = useState(false)
 
   if (loading) {
     return <div className="flex justify-center py-4"><Spinner /></div>
   }
 
   const ungrouped = measurements.filter(m => !m.group_id)
+
+  async function handleImport() {
+    if (!onImportToQuote || !measurements.length) return
+    setImporting(true)
+    const items = measurements.map(m => ({
+      description: m.label ? `${m.label} (${m.length} × ${m.width} ft)` : `Area (${m.length} × ${m.width} ft)`,
+      quantity: m.area,
+      unit: 'sq ft',
+    }))
+    await onImportToQuote(items)
+    setImporting(false)
+  }
 
   async function handleAddGroup() {
     if (!newGroupName.trim()) return
@@ -215,6 +234,18 @@ export default function MeasurementsSection({ estimateId }: { estimateId: string
       {/* Add measurement (ungrouped) */}
       {groups.length === 0 && (
         <MeasurementForm onAdd={async (m) => { await addMeasurement({ ...m, group_id: null }) }} />
+      )}
+
+      {/* Import to quote */}
+      {onImportToQuote && measurements.length > 0 && (
+        <button
+          onClick={handleImport}
+          disabled={importing}
+          className="w-full flex items-center justify-center gap-2 py-2.5 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm font-semibold active:bg-green-100 disabled:opacity-60"
+        >
+          <Ruler className="w-4 h-4" />
+          {importing ? 'Importing…' : `Import ${measurements.length} measurement${measurements.length > 1 ? 's' : ''} to Quote`}
+        </button>
       )}
 
       {/* Add group */}

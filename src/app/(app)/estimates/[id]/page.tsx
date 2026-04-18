@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import Link from 'next/link'
 import { Edit2, Phone, Mail, MapPin, MessageSquare, FileText, Calendar } from 'lucide-react'
 import { useEstimate } from '@/lib/hooks/useEstimate'
 import { useTeam } from '@/lib/hooks/useTeam'
+import { useLineItems } from '@/lib/hooks/useLineItems'
 import TopBar from '@/components/layout/TopBar'
 import StatusSelect from '@/components/estimates/StatusSelect'
 import AssigneeSelect from '@/components/estimates/AssigneeSelect'
@@ -21,7 +22,25 @@ export default function EstimateDetailPage({ params }: { params: { id: string } 
   const { id } = params
   const { estimate, loading, updateEstimate } = useEstimate(id)
   const { members } = useTeam()
+  const { addLineItem, lineItems } = useLineItems(id)
   const [tab, setTab] = useState<Tab>('quote')
+
+  const handleImportMeasurements = useCallback(async (
+    items: { description: string; quantity: number; unit: string }[]
+  ) => {
+    for (let i = 0; i < items.length; i++) {
+      await addLineItem({
+        description: items[i].description,
+        quantity: items[i].quantity,
+        unit_price: 0,
+        unit: items[i].unit,
+        tax_exempt: false,
+        service_item_id: null,
+        sort_order: lineItems.length + i,
+      })
+    }
+    setTab('quote')
+  }, [addLineItem, lineItems.length])
 
   if (loading) {
     return (
@@ -107,24 +126,32 @@ export default function EstimateDetailPage({ params }: { params: { id: string } 
           )}
         </div>
 
-        {/* Follow-up date */}
-        <div className="flex items-center gap-3 bg-white rounded-2xl border border-gray-200 px-4 py-3">
-          <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
-          <span className="text-sm text-gray-600 flex-shrink-0">Follow-up date</span>
-          <input
-            type="date"
-            value={estimate.follow_up_date ?? ''}
-            onChange={e => updateEstimate({ follow_up_date: e.target.value || null })}
-            className="flex-1 text-sm text-gray-800 outline-none bg-transparent min-w-0"
-          />
-          {estimate.follow_up_date && (
-            <button
-              onClick={() => updateEstimate({ follow_up_date: null })}
-              className="text-xs text-gray-400 active:text-red-400 flex-shrink-0"
-            >
-              Clear
-            </button>
-          )}
+        {/* Dates row */}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="flex items-center gap-2 bg-white rounded-2xl border border-gray-200 px-3 py-2.5">
+            <Calendar className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-gray-400">Service date</p>
+              <input
+                type="date"
+                value={estimate.service_date ?? ''}
+                onChange={e => updateEstimate({ service_date: e.target.value || null })}
+                className="w-full text-xs text-gray-800 outline-none bg-transparent"
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-2 bg-white rounded-2xl border border-gray-200 px-3 py-2.5">
+            <Calendar className="w-3.5 h-3.5 text-orange-400 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-gray-400">Follow-up</p>
+              <input
+                type="date"
+                value={estimate.follow_up_date ?? ''}
+                onChange={e => updateEstimate({ follow_up_date: e.target.value || null })}
+                className="w-full text-xs text-gray-800 outline-none bg-transparent"
+              />
+            </div>
+          </div>
         </div>
 
         {/* Notes preview */}
@@ -160,7 +187,12 @@ export default function EstimateDetailPage({ params }: { params: { id: string } 
           <div className="p-4">
             {tab === 'quote' && <LineItemsSection estimateId={id} />}
             {tab === 'media' && <MediaSection estimateId={id} teamId={estimate.team_id} />}
-            {tab === 'measurements' && <MeasurementsSection estimateId={id} />}
+            {tab === 'measurements' && (
+              <MeasurementsSection
+                estimateId={id}
+                onImportToQuote={handleImportMeasurements}
+              />
+            )}
             {tab === 'payments' && <PaymentsSection estimateId={id} />}
             {tab === 'notes' && (
               <div>

@@ -68,6 +68,8 @@ export interface Estimate {
   status: EstimateStatus
   total_area: number
   follow_up_date: string | null
+  service_date: string | null
+  customer_id: string | null
   created_at: string
   updated_at: string
 }
@@ -265,6 +267,9 @@ export interface Equipment {
   purchase_date: string | null
   purchase_price: number | null
   status: EquipmentStatus
+  category: string | null
+  useful_life_years: number | null
+  salvage_value: number | null
   notes: string | null
   created_at: string
 }

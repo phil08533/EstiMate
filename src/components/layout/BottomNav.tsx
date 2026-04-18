@@ -2,17 +2,17 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ClipboardList, DollarSign, Users, BarChart2, Settings2 } from 'lucide-react'
+import { ClipboardList, Calendar, Users, DollarSign, Settings2 } from 'lucide-react'
 
 export default function BottomNav() {
   const pathname = usePathname()
 
   const links = [
-    { href: '/estimates', label: 'Jobs',      icon: ClipboardList },
-    { href: '/crm',       label: 'CRM',       icon: Users },
-    { href: '/finances',  label: 'Finances',  icon: DollarSign },
-    { href: '/analytics', label: 'Analytics', icon: BarChart2 },
-    { href: '/settings',  label: 'Settings',  icon: Settings2 },
+    { href: '/estimates',  label: 'Jobs',     icon: ClipboardList },
+    { href: '/schedule',   label: 'Schedule', icon: Calendar },
+    { href: '/crm',        label: 'CRM',      icon: Users },
+    { href: '/finances',   label: 'Finances', icon: DollarSign },
+    { href: '/settings',   label: 'Settings', icon: Settings2 },
   ]
 
   return (
