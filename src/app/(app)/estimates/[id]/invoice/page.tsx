@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Download, ArrowLeft } from 'lucide-react'
+import { Download, ArrowLeft, Mail } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEstimate } from '@/lib/hooks/useEstimate'
 import { useLineItems } from '@/lib/hooks/useLineItems'
@@ -45,6 +45,15 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
   const invoiceNumber = `EST-${estimate.id.slice(-6).toUpperCase()}`
   const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
 
+  function handleEmail() {
+    const to = estimate!.customer_email ?? ''
+    const subject = encodeURIComponent(`Estimate ${invoiceNumber} from ${settings?.company_name ?? 'us'}`)
+    const body = encodeURIComponent(
+      `Hi ${estimate!.customer_name},\n\nPlease find your estimate ${invoiceNumber} attached.\n\nTotal: ${fmt(totalDue)}\n\nThank you for your business!\n\n${settings?.company_name ?? ''}\n${settings?.phone ?? ''}`
+    )
+    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`
+  }
+
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Action bar */}
@@ -53,6 +62,15 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
           <ArrowLeft className="w-5 h-5" />
         </button>
         <span className="flex-1 font-semibold text-gray-900">Invoice Preview</span>
+        {estimate.customer_email && (
+          <button
+            onClick={handleEmail}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-xl active:bg-green-700"
+          >
+            <Mail className="w-4 h-4" />
+            Email
+          </button>
+        )}
         <button
           onClick={() => window.print()}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-xl active:bg-blue-700"

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useNotes } from '@/lib/hooks/useNotes'
 import NoteEditor from '@/components/notes/NoteEditor'
 import Spinner from '@/components/ui/Spinner'
+import PageHelp from '@/components/ui/PageHelp'
 import type { Note } from '@/lib/types'
 
 const today = new Date().toISOString().split('T')[0]
@@ -94,10 +95,11 @@ export default function NotesPage() {
         </div>
 
         <div className="p-4 space-y-4 pb-8">
-          {dates.length === 0 && (
-            <p className="text-center text-sm text-gray-400 py-4">
-              {search ? `No notes match "${search}"` : 'No past notes'}
-            </p>
+          {dates.length === 0 && !search && (
+            <p className="text-center text-sm text-gray-400 py-4">No past notes</p>
+          )}
+          {dates.length === 0 && search && (
+            <p className="text-center text-sm text-gray-400 py-4">No notes match &quot;{search}&quot;</p>
           )}
           {dates.map(date => (
             <div key={date}>
@@ -127,6 +129,22 @@ export default function NotesPage() {
               </div>
             </div>
           ))}
+
+          <PageHelp
+            title="Notes"
+            intro="Notes is your daily scratch pad — today's note is always open at the top. Tap any past note to reopen it. You can type text or draw a whiteboard sketch."
+            steps={[
+              'Today\'s note is created automatically — just start typing or drawing.',
+              'Switch between text and draw mode using the toolbar inside the note.',
+              'Past notes are grouped by date. Tap one to open the full editor.',
+              'Use the share icon in a note to generate a read-only link for your team.',
+            ]}
+            tips={[
+              'Great for quick measurements, job sketches, or talking points before a meeting.',
+              'Draw mode supports pen, text tool, eraser, colors, and undo.',
+              'Share a note link with a customer or subcontractor — no login required.',
+            ]}
+          />
         </div>
       </div>
     </div>

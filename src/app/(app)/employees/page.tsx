@@ -7,6 +7,7 @@ import TopBar from '@/components/layout/TopBar'
 import Spinner from '@/components/ui/Spinner'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
+import PageHelp from '@/components/ui/PageHelp'
 import type { Employee, EmployeeRole, PayType } from '@/lib/types'
 
 const ROLES: { value: EmployeeRole; label: string; color: string }[] = [
@@ -176,6 +177,25 @@ export default function EmployeesPage() {
         {tree.map(emp => (
           <EmployeeNode key={emp.id} emp={emp} onDelete={id => deactivateEmployee(id)} />
         ))}
+      </div>
+
+      <div>
+        <PageHelp
+          title="Employees"
+          intro="The org tree shows everyone on your team with their role, pay rate, and contact info. Set a manager on each employee to build the hierarchy."
+          steps={[
+            'Tap + to add an employee — first name, last name, and role are required.',
+            'Set "Reports to" to build the org tree. Employees with no manager appear at the top.',
+            'Tap the phone or email icon on any row to call or email that employee directly.',
+            'Tap the expand/collapse arrow to show or hide a manager\'s direct reports.',
+            'Deactivate employees using the trash icon — they are marked inactive, not deleted.',
+          ]}
+          tips={[
+            'Enter pay rates to use for job costing and payroll estimates.',
+            'Use Crew Lead role for employees who manage a crew in the field.',
+            'Add subcontractors here too so you have their contact info in one place.',
+          ]}
+        />
       </div>
 
       <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Add Employee">

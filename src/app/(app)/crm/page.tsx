@@ -8,6 +8,7 @@ import Spinner from '@/components/ui/Spinner'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
 import Link from 'next/link'
+import PageHelp from '@/components/ui/PageHelp'
 import type { LeadStage } from '@/lib/types'
 
 type CRMTab = 'leads' | 'customers'
@@ -144,7 +145,7 @@ export default function CRMPage() {
           </div>
         </div>
 
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-4 pb-4">
           {/* ── LEADS pipeline ── */}
           {tab === 'leads' && (
             <>
@@ -284,6 +285,25 @@ export default function CRMPage() {
             </>
           )}
         </div>
+      </div>
+
+      <div className="px-4 pb-28">
+        <PageHelp
+          title="CRM"
+          intro="The CRM tracks your leads and clients through the sales pipeline — from first contact to won job and ongoing relationship."
+          steps={[
+            'Add a lead when someone expresses interest — capture their name, service interest, and source.',
+            'Move leads through stages: New Lead → Estimate Scheduled → Proposal Sent → Won.',
+            'When a lead is won, tap Convert to turn them into a client.',
+            'Log every call, text, email, and visit so your whole team has context.',
+            'Clients tab shows all active customers with their contact info.',
+          ]}
+          tips={[
+            'Track the estimated job value on each lead to see your pipeline value.',
+            'Set a follow-up date on leads so they appear on the Schedule calendar.',
+            'Source tracking (Referral, Google, Mailer, etc.) helps you know which marketing is working.',
+          ]}
+        />
       </div>
 
       {/* Add Lead Modal */}

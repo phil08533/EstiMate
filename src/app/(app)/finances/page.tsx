@@ -7,6 +7,7 @@ import { useRevenue } from '@/lib/hooks/useRevenue'
 import TopBar from '@/components/layout/TopBar'
 import Spinner from '@/components/ui/Spinner'
 import Button from '@/components/ui/Button'
+import PageHelp from '@/components/ui/PageHelp'
 import type { ExpenseCategory, PaymentMethod } from '@/lib/types'
 
 type FinanceTab = 'overview' | 'revenue' | 'expenses'
@@ -328,6 +329,24 @@ export default function FinancesPage() {
               )}
             </>
           )}
+        </div>
+
+        <div className="px-4">
+          <PageHelp
+            title="Finances"
+            intro="Track all money in (revenue from payments on estimates) and money out (expenses you log here). The Overview tab shows your P&L."
+            steps={[
+              'Revenue is pulled automatically from payments recorded on your estimates.',
+              'Add expenses on the Expenses tab — pick a category, amount, date, and vendor.',
+              'The Overview tab shows total revenue, expenses, and net profit with a category breakdown.',
+              'Use Analytics in Settings for charts and YTD numbers.',
+            ]}
+            tips={[
+              'Record expenses regularly — even small ones add up and reduce your tax burden.',
+              'Log equipment fuel and repairs under the correct categories for accurate reporting.',
+              'Payments on estimates automatically flow into your revenue total.',
+            ]}
+          />
         </div>
       </div>
     </>

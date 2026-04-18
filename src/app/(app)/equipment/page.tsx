@@ -10,6 +10,7 @@ import Input from '@/components/ui/Input'
 import Textarea from '@/components/ui/Textarea'
 import Modal from '@/components/ui/Modal'
 import Link from 'next/link'
+import PageHelp from '@/components/ui/PageHelp'
 import type { Equipment, EquipmentStatus } from '@/lib/types'
 
 const STATUS_CONFIG: Record<EquipmentStatus, { label: string; color: string; icon: typeof CheckCircle }> = {
@@ -108,6 +109,25 @@ export default function EquipmentPage() {
             </div>
           )
         })}
+      </div>
+
+      <div className="px-4">
+        <PageHelp
+          title="Equipment"
+          intro="Track every piece of equipment — mowers, trucks, trailers, tools. Log maintenance and repairs, and see depreciation to plan replacements."
+          steps={[
+            'Tap + to add equipment — name is required, make/model/year/price are optional.',
+            'Open any item to see its depreciation schedule based on purchase price and useful life.',
+            'Add log entries for maintenance, repairs, and fuel to track total operating cost.',
+            'Change status to Maintenance when equipment is being serviced, or Retired when replaced.',
+            'Edit the Useful Life and Salvage Value fields to tune the depreciation calculation.',
+          ]}
+          tips={[
+            'Equipment with 85%+ depreciation shows a replacement warning — budget ahead.',
+            'Log all repair costs to see true cost of ownership per piece of equipment.',
+            'Use the serial number field for warranty claims and insurance documentation.',
+          ]}
+        />
       </div>
 
       <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Add equipment">

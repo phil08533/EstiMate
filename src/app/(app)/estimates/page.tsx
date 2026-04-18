@@ -7,6 +7,7 @@ import { useEstimates } from '@/lib/hooks/useEstimates'
 import EstimateCard from '@/components/estimates/EstimateCard'
 import EstimateFiltersBar from '@/components/estimates/EstimateFilters'
 import Spinner from '@/components/ui/Spinner'
+import PageHelp from '@/components/ui/PageHelp'
 import type { EstimateFilters } from '@/lib/types'
 
 const DEFAULT_FILTERS: EstimateFilters = {
@@ -47,6 +48,22 @@ export default function EstimatesPage() {
             <EstimateCard key={estimate.id} estimate={estimate} />
           ))
         )}
+        <PageHelp
+          title="Estimates"
+          intro="Estimates are the core of your workflow — capture customer info in the field, build a quote, track status, and record payments."
+          steps={[
+            'Tap + to create a new estimate — name, phone, and address are all you need.',
+            'Open an estimate and add line items to build the quote.',
+            'Change the status from Need to Estimate → Sent → Sold as the job progresses.',
+            'Record payments on the estimate when you collect money.',
+            'View the invoice/PDF to print or save for the customer.',
+          ]}
+          tips={[
+            'Set a follow-up date so you get a reminder badge if you haven\'t heard back.',
+            'Set the service date to see the job on the Schedule calendar.',
+            'Use the camera button to attach before/after photos — great for social posts.',
+          ]}
+        />
       </div>
 
       {/* FAB */}

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { DollarSign, Lightbulb, ChevronDown, ChevronUp, Search, Calculator } from 'lucide-react'
 import TopBar from '@/components/layout/TopBar'
+import PageHelp from '@/components/ui/PageHelp'
 import { STATE_TAX_DATA, FEDERAL_PAYROLL } from '@/lib/data/stateTaxData'
 import { CONTRACTOR_TIPS } from '@/lib/data/contractorTips'
 
@@ -379,6 +380,21 @@ export default function ResourcesPage() {
           {section === 'tips' && <TipsSection />}
           {section === 'tax' && <TaxSection />}
           {section === 'calculator' && <MaterialCalculator />}
+          <PageHelp
+            title="Resources"
+            intro="Resources gives you quick reference tools you need in the field — business tips, state tax rates, and a material quantity calculator."
+            steps={[
+              'Business Tips: browse best practices for estimating, pricing, marketing, and more.',
+              'Tax Reference: look up any state\'s sales tax, income tax, and SUI rates — plus federal payroll rates.',
+              'Calculator: enter area and material type to get cubic yards, bag counts, and optional cost.',
+              'Add the calculated quantity directly to an estimate line item.',
+            ]}
+            tips={[
+              'The material calculator adds 10% for waste — always order a little extra.',
+              'Tax rates are reference only — confirm with your CPA or state tax authority.',
+              'Use the pricing tips section when deciding whether to raise your rates.',
+            ]}
+          />
         </div>
       </div>
     </>

@@ -8,6 +8,7 @@ import { useExpenses } from '@/lib/hooks/useExpenses'
 import { useLeads } from '@/lib/hooks/useCRM'
 import TopBar from '@/components/layout/TopBar'
 import Spinner from '@/components/ui/Spinner'
+import PageHelp from '@/components/ui/PageHelp'
 
 function fmt(n: number) {
   return n.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
@@ -209,6 +210,22 @@ export default function AnalyticsPage() {
             ))}
           </div>
         </div>
+
+        <PageHelp
+          title="Analytics"
+          intro="Analytics gives you a bird's-eye view of your business performance — revenue, expenses, win rates, and pipeline health all in one place."
+          steps={[
+            'YTD numbers pull from payments recorded on estimates (revenue) and logged expenses.',
+            'Win rate = sold estimates ÷ total estimates — aim for 50%+ on leads you quote.',
+            'Lead conversion rate tracks how many CRM leads turn into won jobs.',
+            'Revenue and expense bars show month-by-month trends for the last 6 months.',
+          ]}
+          tips={[
+            'Low win rate? Your pricing or follow-up may need work — check the Resources tips.',
+            'High expenses in one category? Drill in to Finances for the breakdown.',
+            'Average job value helps you set minimum job sizes to stay profitable.',
+          ]}
+        />
 
       </div>
     </>
