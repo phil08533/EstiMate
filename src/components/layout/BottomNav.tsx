@@ -16,7 +16,7 @@ export default function BottomNav() {
   ]
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 safe-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 safe-bottom md:hidden">
       <div className="flex items-center justify-around max-w-lg mx-auto">
         {links.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || (href !== '/settings' && pathname.startsWith(href))

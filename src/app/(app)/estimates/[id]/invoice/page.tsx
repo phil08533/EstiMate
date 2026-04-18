@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Download, ArrowLeft, Mail } from 'lucide-react'
+import { Download, ArrowLeft, Mail, Link2, Check } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEstimate } from '@/lib/hooks/useEstimate'
 import { useLineItems } from '@/lib/hooks/useLineItems'
 import { useCompanySettings } from '@/lib/hooks/useCompanySettings'
 import { usePayments } from '@/lib/hooks/usePayments'
+import { usePaymentLinks } from '@/lib/hooks/usePaymentLinks'
 import Spinner from '@/components/ui/Spinner'
 import { createClient } from '@/lib/supabase/client'
 
@@ -21,7 +22,10 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
   const { lineItems, subtotal, loading: liLoading } = useLineItems(id)
   const { settings, loading: sLoading } = useCompanySettings()
   const { payments, totalPaid, loading: pLoading } = usePayments(id)
+  const { links, createLink } = usePaymentLinks(id)
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [sendingLink, setSendingLink] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   const loading = eLoading || liLoading || sLoading || pLoading
 
@@ -45,6 +49,37 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
   const invoiceNumber = `EST-${estimate.id.slice(-6).toUpperCase()}`
   const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
 
+  async function handleSendPaymentLink() {
+    if (!estimate) return
+    setSendingLink(true)
+    try {
+      const depositAmt = Math.round(totalDue * 0.5 * 100) / 100
+      const existing = links.find(l => l.status === 'pending')
+      const link = existing ?? await createLink({
+        depositPct: 50,
+        depositAmount: depositAmt,
+        totalAmount: totalDue,
+        customerEmail: estimate!.customer_email,
+        customerName: estimate!.customer_name,
+      })
+      const url = `${window.location.origin}/pay/${link.token}`
+
+      if (estimate!.customer_email) {
+        const subject = encodeURIComponent(`Your estimate from ${settings?.company_name ?? 'us'} — pay your deposit`)
+        const body = encodeURIComponent(
+          `Hi ${estimate!.customer_name},\n\nYour estimate is ready! Please click the link below to review and pay your 50% deposit (${fmt(depositAmt)}) to get started:\n\n${url}\n\nTotal quote: ${fmt(totalDue)}\n\nThank you!\n${settings?.company_name ?? ''}`
+        )
+        window.location.href = `mailto:${estimate!.customer_email}?subject=${subject}&body=${body}`
+      } else {
+        await navigator.clipboard.writeText(url)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 3000)
+      }
+    } finally {
+      setSendingLink(false)
+    }
+  }
+
   function handleEmail() {
     const to = estimate!.customer_email ?? ''
     const subject = encodeURIComponent(`Estimate ${invoiceNumber} from ${settings?.company_name ?? 'us'}`)
@@ -62,6 +97,14 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
           <ArrowLeft className="w-5 h-5" />
         </button>
         <span className="flex-1 font-semibold text-gray-900">Invoice Preview</span>
+        <button
+          onClick={handleSendPaymentLink}
+          disabled={sendingLink}
+          className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white text-sm font-semibold rounded-xl active:bg-purple-700 disabled:opacity-60"
+        >
+          {copied ? <Check className="w-4 h-4" /> : <Link2 className="w-4 h-4" />}
+          {copied ? 'Copied!' : sendingLink ? '…' : 'Send Link'}
+        </button>
         {estimate.customer_email && (
           <button
             onClick={handleEmail}
@@ -76,7 +119,7 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-xl active:bg-blue-700"
         >
           <Download className="w-4 h-4" />
-          Save PDF
+          PDF
         </button>
       </div>
 

@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import BottomNav from '@/components/layout/BottomNav'
+import SideNav from '@/components/layout/SideNav'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -12,7 +13,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <main className="pb-20 max-w-lg mx-auto">
+      <SideNav />
+      <main className="pb-20 md:pb-6 md:ml-60">
         {children}
       </main>
       <BottomNav />

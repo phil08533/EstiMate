@@ -233,6 +233,25 @@ export interface Payment {
 }
 export type PaymentInsert = Omit<Payment, 'id' | 'created_at'>
 
+export interface PaymentLink {
+  id: string
+  team_id: string
+  estimate_id: string
+  created_by: string | null
+  token: string
+  deposit_pct: number
+  deposit_amount: number
+  total_amount: number
+  status: 'pending' | 'paid' | 'expired'
+  stripe_payment_intent_id: string | null
+  customer_email: string | null
+  customer_name: string | null
+  expires_at: string | null
+  paid_at: string | null
+  created_at: string
+}
+export type PaymentLinkInsert = Omit<PaymentLink, 'id' | 'token' | 'created_at' | 'paid_at'>
+
 export type ExpenseCategory =
   | 'materials' | 'labor' | 'equipment' | 'fuel'
   | 'insurance' | 'marketing' | 'office' | 'utilities'
