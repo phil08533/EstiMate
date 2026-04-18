@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Edit2, Phone, Mail, MapPin, MessageSquare } from 'lucide-react'
+import { Edit2, Phone, Mail, MapPin, MessageSquare, FileText } from 'lucide-react'
 import { useEstimate } from '@/lib/hooks/useEstimate'
 import { useTeam } from '@/lib/hooks/useTeam'
 import TopBar from '@/components/layout/TopBar'
@@ -10,14 +10,18 @@ import StatusSelect from '@/components/estimates/StatusSelect'
 import AssigneeSelect from '@/components/estimates/AssigneeSelect'
 import MediaSection from '@/components/media/MediaSection'
 import MeasurementsSection from '@/components/measurements/MeasurementsSection'
+import LineItemsSection from '@/components/estimates/LineItemsSection'
+import PaymentsSection from '@/components/estimates/PaymentsSection'
 import Spinner from '@/components/ui/Spinner'
 import type { EstimateStatus } from '@/lib/types'
+
+type Tab = 'quote' | 'media' | 'measurements' | 'payments' | 'notes'
 
 export default function EstimateDetailPage({ params }: { params: { id: string } }) {
   const { id } = params
   const { estimate, loading, updateEstimate } = useEstimate(id)
   const { members } = useTeam()
-  const [tab, setTab] = useState<'media' | 'measurements' | 'notes'>('media')
+  const [tab, setTab] = useState<Tab>('quote')
 
   if (loading) {
     return (
@@ -43,15 +47,28 @@ export default function EstimateDetailPage({ params }: { params: { id: string } 
     await updateEstimate({ assigned_to: userId })
   }
 
+  const tabs: { id: Tab; label: string }[] = [
+    { id: 'quote', label: 'Quote' },
+    { id: 'media', label: 'Media' },
+    { id: 'measurements', label: 'Measure' },
+    { id: 'payments', label: 'Payments' },
+    { id: 'notes', label: 'Notes' },
+  ]
+
   return (
     <>
       <TopBar
         title={estimate.customer_name}
         backHref="/estimates"
         right={
-          <Link href={`/estimates/${id}/edit`} className="p-1.5 rounded-lg text-gray-500 active:bg-gray-100">
-            <Edit2 className="w-5 h-5" />
-          </Link>
+          <div className="flex items-center gap-1">
+            <Link href={`/estimates/${id}/invoice`} className="p-1.5 rounded-lg text-gray-500 active:bg-gray-100">
+              <FileText className="w-5 h-5" />
+            </Link>
+            <Link href={`/estimates/${id}/edit`} className="p-1.5 rounded-lg text-gray-500 active:bg-gray-100">
+              <Edit2 className="w-5 h-5" />
+            </Link>
+          </div>
         }
       />
 
@@ -105,24 +122,26 @@ export default function EstimateDetailPage({ params }: { params: { id: string } 
 
         {/* Tabs */}
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-          <div className="flex border-b border-gray-200">
-            {(['media', 'measurements', 'notes'] as const).map(t => (
+          <div className="flex border-b border-gray-200 overflow-x-auto">
+            {tabs.map(t => (
               <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={`flex-1 py-3 text-sm font-medium capitalize transition-colors ${
-                  tab === t
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={`flex-shrink-0 py-3 px-4 text-sm font-medium transition-colors ${
+                  tab === t.id
                     ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
                     : 'text-gray-500'
                 }`}
               >
-                {t}
+                {t.label}
               </button>
             ))}
           </div>
           <div className="p-4">
+            {tab === 'quote' && <LineItemsSection estimateId={id} />}
             {tab === 'media' && <MediaSection estimateId={id} teamId={estimate.team_id} />}
             {tab === 'measurements' && <MeasurementsSection estimateId={id} />}
+            {tab === 'payments' && <PaymentsSection estimateId={id} />}
             {tab === 'notes' && (
               <div>
                 {estimate.comments ? (

@@ -11,6 +11,13 @@ export type Database = {
       share_tokens: { Row: ShareToken; Insert: ShareTokenInsert; Update: Partial<ShareTokenInsert> }
       notes: { Row: Note; Insert: NoteInsert; Update: Partial<NoteInsert> }
       note_shares: { Row: NoteShare; Insert: NoteShareInsert; Update: Partial<NoteShareInsert> }
+      company_settings: { Row: CompanySettings; Insert: CompanySettingsInsert; Update: Partial<CompanySettingsInsert> }
+      service_items: { Row: ServiceItem; Insert: ServiceItemInsert; Update: Partial<ServiceItemInsert> }
+      estimate_line_items: { Row: EstimateLineItem; Insert: EstimateLineItemInsert; Update: Partial<EstimateLineItemInsert> }
+      payments: { Row: Payment; Insert: PaymentInsert; Update: Partial<PaymentInsert> }
+      expenses: { Row: Expense; Insert: ExpenseInsert; Update: Partial<ExpenseInsert> }
+      equipment: { Row: Equipment; Insert: EquipmentInsert; Update: Partial<EquipmentInsert> }
+      equipment_logs: { Row: EquipmentLog; Insert: EquipmentLogInsert; Update: Partial<EquipmentLogInsert> }
     }
     Views: Record<string, never>
     Functions: Record<string, never>
@@ -160,6 +167,121 @@ export interface NoteShare {
   created_at: string
 }
 export type NoteShareInsert = Omit<NoteShare, 'id' | 'created_at'>
+
+// ─── Company & billing types ──────────────────────────────────────────────────
+
+export interface CompanySettings {
+  id: string
+  team_id: string
+  company_name: string | null
+  logo_path: string | null
+  logo_scale: number
+  phone: string | null
+  email: string | null
+  address: string | null
+  website: string | null
+  license_number: string | null
+  tax_rate: number
+  payment_terms: string | null
+  footer_notes: string | null
+  created_at: string
+  updated_at: string
+}
+export type CompanySettingsInsert = Omit<CompanySettings, 'id' | 'created_at' | 'updated_at'>
+
+export interface ServiceItem {
+  id: string
+  team_id: string
+  name: string
+  description: string | null
+  unit: string
+  default_price: number
+  category: string | null
+  created_at: string
+}
+export type ServiceItemInsert = Omit<ServiceItem, 'id' | 'created_at'>
+
+export interface EstimateLineItem {
+  id: string
+  estimate_id: string
+  service_item_id: string | null
+  description: string
+  quantity: number
+  unit_price: number
+  unit: string
+  tax_exempt: boolean
+  sort_order: number
+  created_at: string
+}
+export type EstimateLineItemInsert = Omit<EstimateLineItem, 'id' | 'created_at'>
+
+export type PaymentMethod = 'cash' | 'check' | 'card' | 'bank_transfer' | 'other'
+
+export interface Payment {
+  id: string
+  estimate_id: string
+  team_id: string
+  amount: number
+  payment_method: PaymentMethod
+  payment_date: string
+  notes: string | null
+  created_by: string | null
+  created_at: string
+}
+export type PaymentInsert = Omit<Payment, 'id' | 'created_at'>
+
+export type ExpenseCategory =
+  | 'materials' | 'labor' | 'equipment' | 'fuel'
+  | 'insurance' | 'marketing' | 'office' | 'utilities'
+  | 'subcontractor' | 'other'
+
+export interface Expense {
+  id: string
+  team_id: string
+  category: ExpenseCategory
+  description: string
+  amount: number
+  expense_date: string
+  vendor: string | null
+  receipt_path: string | null
+  notes: string | null
+  created_by: string | null
+  created_at: string
+}
+export type ExpenseInsert = Omit<Expense, 'id' | 'created_at'>
+
+export type EquipmentStatus = 'active' | 'maintenance' | 'retired'
+
+export interface Equipment {
+  id: string
+  team_id: string
+  name: string
+  description: string | null
+  make: string | null
+  model: string | null
+  year: number | null
+  serial_number: string | null
+  purchase_date: string | null
+  purchase_price: number | null
+  status: EquipmentStatus
+  notes: string | null
+  created_at: string
+}
+export type EquipmentInsert = Omit<Equipment, 'id' | 'created_at'>
+
+export type EquipmentLogType = 'maintenance' | 'repair' | 'fuel' | 'note'
+
+export interface EquipmentLog {
+  id: string
+  equipment_id: string
+  log_type: EquipmentLogType
+  description: string
+  cost: number | null
+  log_date: string
+  created_by: string | null
+  created_at: string
+}
+export type EquipmentLogInsert = Omit<EquipmentLog, 'id' | 'created_at'>
 
 // ─── Sort / filter types ───────────────────────────────────────────────────────
 export type SortField = 'customer_name' | 'status' | 'created_at' | 'updated_at' | 'total_area'

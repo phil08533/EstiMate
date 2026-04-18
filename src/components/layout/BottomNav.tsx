@@ -2,17 +2,17 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ClipboardList, Users, LogOut, StickyNote } from 'lucide-react'
-import { useAuth } from '@/lib/hooks/useAuth'
+import { ClipboardList, DollarSign, StickyNote, BookOpen, Settings2 } from 'lucide-react'
 
 export default function BottomNav() {
   const pathname = usePathname()
-  const { signOut } = useAuth()
 
   const links = [
     { href: '/estimates', label: 'Estimates', icon: ClipboardList },
+    { href: '/finances', label: 'Finances', icon: DollarSign },
     { href: '/notes', label: 'Notes', icon: StickyNote },
-    { href: '/team', label: 'Team', icon: Users },
+    { href: '/resources', label: 'Resources', icon: BookOpen },
+    { href: '/settings', label: 'Settings', icon: Settings2 },
   ]
 
   return (
@@ -24,7 +24,7 @@ export default function BottomNav() {
             <Link
               key={href}
               href={href}
-              className={`flex flex-col items-center gap-0.5 py-2 px-6 min-w-[64px] transition-colors ${
+              className={`flex flex-col items-center gap-0.5 py-2 px-4 min-w-[60px] transition-colors ${
                 active ? 'text-blue-600' : 'text-gray-400'
               }`}
             >
@@ -33,13 +33,6 @@ export default function BottomNav() {
             </Link>
           )
         })}
-        <button
-          onClick={signOut}
-          className="flex flex-col items-center gap-0.5 py-2 px-6 min-w-[64px] text-gray-400 transition-colors"
-        >
-          <LogOut className="w-6 h-6" />
-          <span className="text-xs font-medium">Sign out</span>
-        </button>
       </div>
     </nav>
   )
