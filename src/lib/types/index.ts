@@ -532,6 +532,29 @@ export interface Subscription {
   updated_at: string
 }
 
+// ─── Recurring Jobs ───────────────────────────────────────────────────────────
+export type RecurrenceFrequency = 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'annually'
+
+export interface RecurringJob {
+  id: string
+  team_id: string
+  customer_name: string
+  customer_phone: string | null
+  customer_email: string | null
+  customer_address: string | null
+  customer_id: string | null
+  title: string
+  description: string | null
+  frequency: RecurrenceFrequency
+  next_date: string
+  assigned_to: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type RecurringJobInsert = Omit<RecurringJob, 'id' | 'created_at' | 'updated_at'>
+
 // ─── Sort / filter types ───────────────────────────────────────────────────────
 export type SortField = 'customer_name' | 'status' | 'created_at' | 'updated_at' | 'total_area'
 export type SortDirection = 'asc' | 'desc'

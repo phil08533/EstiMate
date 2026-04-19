@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Building2, Users, Wrench, LogOut, ChevronRight, HelpCircle, BarChart2, UserCog, StickyNote, BookOpen, Megaphone, Calendar, Bell, CreditCard, Store, Calculator, Clock } from 'lucide-react'
+import { Building2, Users, Wrench, LogOut, ChevronRight, HelpCircle, BarChart2, UserCog, StickyNote, BookOpen, Megaphone, Calendar, Bell, CreditCard, Store, Calculator, Clock, RefreshCw, Search } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import TopBar from '@/components/layout/TopBar'
 
@@ -23,6 +23,7 @@ const SECTIONS = [
       { href: '/time',               icon: Clock,     label: 'Time Tracking',     description: 'Log hours per job per employee',                  color: 'text-indigo-600 bg-indigo-50' },
       { href: '/schedule',           icon: Calendar,  label: 'Schedule',          description: 'Job calendar, service & follow-up dates',         color: 'text-green-600 bg-green-50' },
       { href: '/settings/reminders', icon: Bell,      label: 'Auto Reminders',    description: 'Email customers before their service date',       color: 'text-amber-600 bg-amber-50' },
+      { href: '/recurring',          icon: RefreshCw, label: 'Recurring Jobs',    description: 'Maintenance contracts, auto-generate estimates',   color: 'text-blue-600 bg-blue-50' },
       { href: '/advertising',        icon: Megaphone, label: 'Advertising',       description: 'Social posts, Facebook ads guide, mailers',       color: 'text-pink-600 bg-pink-50' },
     ],
   },
@@ -36,6 +37,7 @@ const SECTIONS = [
   {
     group: 'Tools & Help',
     items: [
+      { href: '/search',     icon: Search,     label: 'Search',              description: 'Search across estimates, clients, notes, vendors', color: 'text-gray-600 bg-gray-50' },
       { href: '/calculator', icon: Calculator, label: 'Material Calculator', description: 'Mulch, rock, soil, sod — cubic yards & cost', color: 'text-lime-600 bg-lime-50' },
       { href: '/notes',      icon: StickyNote, label: 'Notes',               description: 'Daily notes and team notes',                  color: 'text-yellow-600 bg-yellow-50' },
       { href: '/resources',  icon: BookOpen,   label: 'Resources',           description: 'Tax reference and contractor tips',           color: 'text-cyan-600 bg-cyan-50' },

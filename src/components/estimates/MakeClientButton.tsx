@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { UserPlus, CheckCircle, ExternalLink } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useCustomers } from '@/lib/hooks/useCRM'
+import { createClient } from '@/lib/supabase/client'
 import type { Estimate } from '@/lib/types'
 
 export default function MakeClientButton({ estimate }: { estimate: Estimate }) {
@@ -33,15 +34,16 @@ export default function MakeClientButton({ estimate }: { estimate: Estimate }) {
       email: estimate.customer_email,
       phone: estimate.customer_phone,
       address: estimate.customer_address,
-      city: null,
-      state: null,
-      zip: null,
+      city: null, state: null, zip: null,
       tags: null,
       notes: estimate.comments,
       source: 'estimate',
       is_active: true,
     })
     if (newCustomer) {
+      // Write customer_id back onto the estimate so future visits show "View in CRM"
+      const supabase = createClient()
+      await supabase.from('estimates').update({ customer_id: newCustomer.id }).eq('id', estimate.id)
       setCustomerId(newCustomer.id)
       setDone(true)
     }
@@ -59,15 +61,9 @@ export default function MakeClientButton({ estimate }: { estimate: Estimate }) {
       }`}
     >
       {done ? (
-        <>
-          <CheckCircle className="w-3.5 h-3.5" />
-          Added to CRM
-        </>
+        <><CheckCircle className="w-3.5 h-3.5" />Added to CRM</>
       ) : (
-        <>
-          <UserPlus className="w-3.5 h-3.5" />
-          {loading ? 'Adding…' : 'Make Client'}
-        </>
+        <><UserPlus className="w-3.5 h-3.5" />{loading ? 'Adding…' : 'Make Client'}</>
       )}
     </button>
   )

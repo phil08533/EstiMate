@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, ClipboardList, Calendar, Users, DollarSign, Settings2,
   BarChart2, StickyNote, LogOut, Zap, Megaphone, Wrench, Store,
-  Clock, Calculator,
+  Clock, Calculator, Search, RefreshCw,
 } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import NotificationBell from './NotificationBell'
@@ -19,6 +19,8 @@ const PRIMARY = [
 ]
 
 const SECONDARY = [
+  { href: '/search',       label: 'Search',       icon: Search },
+  { href: '/recurring',    label: 'Recurring',    icon: RefreshCw },
   { href: '/analytics',   label: 'Analytics',   icon: BarChart2 },
   { href: '/time',        label: 'Time',         icon: Clock },
   { href: '/notes',       label: 'Notes',        icon: StickyNote },
