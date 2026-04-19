@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Building2, Users, Wrench, LogOut, ChevronRight, HelpCircle, BarChart2, UserCog, StickyNote, BookOpen, Megaphone, Calendar, Bell, CreditCard, Store, Calculator, Clock, RefreshCw, Search, Tag, UsersRound } from 'lucide-react'
+import { Building2, Users, Wrench, LogOut, ChevronRight, HelpCircle, BarChart2, UserCog, StickyNote, BookOpen, Megaphone, Calendar, Bell, CreditCard, Store, Calculator, Clock, RefreshCw, Search, Tag, UsersRound, Smartphone, HardHat } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import TopBar from '@/components/layout/TopBar'
 
@@ -13,12 +13,14 @@ const SECTIONS = [
       { href: '/settings/billing',  icon: CreditCard, label: 'Plans & Billing',  description: 'Manage subscription, upgrade plan',           color: 'text-green-600 bg-green-50' },
       { href: '/settings/team',     icon: Users,      label: 'Team & Members',   description: 'Invite people, manage roles, share links',    color: 'text-violet-600 bg-violet-50' },
       { href: '/employees',         icon: UserCog,    label: 'Employees',         description: 'Org tree, roles, pay rates, time tracking',   color: 'text-teal-600 bg-teal-50' },
+      { href: '/portal',            icon: Smartphone, label: 'Employee Portal',   description: 'My jobs, clock in/out, after photos, training',color: 'text-blue-600 bg-blue-50' },
     ],
   },
   {
     group: 'Operations',
     items: [
-      { href: '/equipment',          icon: Wrench,    label: 'Equipment',         description: 'Fleet inventory, maintenance logs, depreciation', color: 'text-orange-600 bg-orange-50' },
+      { href: '/jobs',               icon: HardHat,   label: 'Jobs View',         description: 'Sold jobs by crew, unscheduled, and my jobs',     color: 'text-green-600 bg-green-50' },
+      { href: '/equipment',          icon: Wrench,    label: 'Equipment',         description: 'Fleet inventory, maintenance logs, depreciation',  color: 'text-orange-600 bg-orange-50' },
       { href: '/vendors',            icon: Store,     label: 'Vendors',           description: 'Supplier contacts, quick-dial, categories',      color: 'text-rose-600 bg-rose-50' },
       { href: '/time',               icon: Clock,     label: 'Time Tracking',     description: 'Log hours per job per employee',                  color: 'text-indigo-600 bg-indigo-50' },
       { href: '/schedule',           icon: Calendar,  label: 'Schedule',          description: 'Job calendar, service & follow-up dates',         color: 'text-green-600 bg-green-50' },

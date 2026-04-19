@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, ClipboardList, Calendar, Users, DollarSign, Settings2,
   BarChart2, StickyNote, LogOut, Zap, Megaphone, Wrench, Store,
-  Clock, Calculator, Search, RefreshCw, HardHat, BookOpen,
+  Clock, Calculator, Search, RefreshCw, HardHat, BookOpen, Smartphone,
 } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import NotificationBell from './NotificationBell'
@@ -20,6 +20,7 @@ const PRIMARY = [
 ]
 
 const SECONDARY = [
+  { href: '/portal',       label: 'My Portal',    icon: Smartphone },
   { href: '/search',       label: 'Search',       icon: Search },
   { href: '/recurring',    label: 'Recurring',    icon: RefreshCw },
   { href: '/training',     label: 'Training',     icon: BookOpen },

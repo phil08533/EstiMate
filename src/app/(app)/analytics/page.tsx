@@ -1,11 +1,12 @@
 'use client'
 
 import { useMemo } from 'react'
-import { TrendingUp, TrendingDown, DollarSign, ClipboardList, Target, Users } from 'lucide-react'
+import { TrendingUp, TrendingDown, DollarSign, ClipboardList, Target, Users, Tag } from 'lucide-react'
 import { useEstimates } from '@/lib/hooks/useEstimates'
 import { useRevenue } from '@/lib/hooks/useRevenue'
 import { useExpenses } from '@/lib/hooks/useExpenses'
 import { useLeads } from '@/lib/hooks/useCRM'
+import { useServiceCategories } from '@/lib/hooks/useServiceCategories'
 import TopBar from '@/components/layout/TopBar'
 import Spinner from '@/components/ui/Spinner'
 import PageHelp from '@/components/ui/PageHelp'
@@ -37,6 +38,7 @@ export default function AnalyticsPage() {
   const { payments, loading: rLoad } = useRevenue()
   const { expenses, loading: expLoad } = useExpenses()
   const { leads, loading: lLoad } = useLeads()
+  const { categories } = useServiceCategories()
 
   const loading = eLoad || rLoad || expLoad || lLoad
 
@@ -97,8 +99,16 @@ export default function AnalyticsPage() {
     const maxMonthly = Math.max(...monthlyRevenue.map(m => m.value), 1)
     const maxExpMonthly = Math.max(...monthlyExpenses.map(m => m.value), 1)
 
-    // Unpaid (estimates with status sent/sold and no/partial payments)
     const totalRevenue = payments.reduce((s, p) => s + p.amount, 0)
+
+    // Jobs and revenue by service category
+    const byCategoryId: Record<string, { jobs: number; sold: number }> = {}
+    for (const e of estimates) {
+      const cid = e.category_id ?? '__none__'
+      if (!byCategoryId[cid]) byCategoryId[cid] = { jobs: 0, sold: 0 }
+      byCategoryId[cid].jobs++
+      if (e.status === 'sold') byCategoryId[cid].sold++
+    }
 
     return {
       ytdRevenue, ytdExpenses, ytdNet,
@@ -108,6 +118,7 @@ export default function AnalyticsPage() {
       byStatus, avgEstimateValue,
       monthlyRevenue, monthlyExpenses,
       maxMonthly, maxExpMonthly,
+      byCategoryId,
     }
   }, [estimates, payments, expenses, leads])
 
@@ -210,6 +221,43 @@ export default function AnalyticsPage() {
             ))}
           </div>
         </div>
+
+        {/* Service category breakdown */}
+        {categories.length > 0 && Object.keys(stats.byCategoryId).some(k => k !== '__none__') && (
+          <div className="bg-white border border-gray-200 rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Tag className="w-4 h-4 text-gray-400" />
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Jobs by Service Category</p>
+            </div>
+            <div className="space-y-2.5">
+              {categories.map(cat => {
+                const data = stats.byCategoryId[cat.id] ?? { jobs: 0, sold: 0 }
+                if (data.jobs === 0) return null
+                const winPct = data.jobs > 0 ? Math.round((data.sold / data.jobs) * 100) : 0
+                return (
+                  <div key={cat.id} className="flex items-center gap-3">
+                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
+                    <span className="text-sm text-gray-700 flex-1 truncate">{cat.name}</span>
+                    <span className="text-xs text-gray-400 flex-shrink-0">{data.sold}/{data.jobs} won</span>
+                    <div className="w-20 bg-gray-100 rounded-full h-1.5 flex-shrink-0">
+                      <div className="h-full rounded-full" style={{ width: `${winPct}%`, backgroundColor: cat.color }} />
+                    </div>
+                    <span className="text-xs font-semibold text-gray-700 w-8 text-right flex-shrink-0">{winPct}%</span>
+                  </div>
+                )
+              })}
+              {stats.byCategoryId['__none__']?.jobs > 0 && (
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 rounded-full bg-gray-300 flex-shrink-0" />
+                  <span className="text-sm text-gray-500 flex-1">Uncategorized</span>
+                  <span className="text-xs text-gray-400">{stats.byCategoryId['__none__'].sold}/{stats.byCategoryId['__none__'].jobs} won</span>
+                  <div className="w-20 bg-gray-100 rounded-full h-1.5 flex-shrink-0" />
+                  <span className="text-xs text-gray-400 w-8 text-right">—</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <PageHelp
           title="Analytics"

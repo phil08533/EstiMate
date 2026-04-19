@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Phone, Mail, MapPin, Trash2, ChevronRight, UserCheck, ArrowRight, Search } from 'lucide-react'
+import { Plus, Phone, Mail, MapPin, Trash2, ChevronRight, UserCheck, ArrowRight, Search, Upload } from 'lucide-react'
 import { useCustomers, useLeads } from '@/lib/hooks/useCRM'
 import TopBar from '@/components/layout/TopBar'
 import Spinner from '@/components/ui/Spinner'
@@ -108,12 +108,19 @@ export default function CRMPage() {
       <TopBar
         title="CRM"
         right={
-          <button
-            onClick={() => tab === 'leads' ? setShowAddLead(true) : setShowAddCustomer(true)}
-            className="p-1.5 rounded-lg text-blue-600 active:bg-blue-50"
-          >
-            <Plus className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            {tab === 'customers' && (
+              <Link href="/crm/import" className="p-1.5 rounded-lg text-gray-500 active:bg-gray-100">
+                <Upload className="w-5 h-5" />
+              </Link>
+            )}
+            <button
+              onClick={() => tab === 'leads' ? setShowAddLead(true) : setShowAddCustomer(true)}
+              className="p-1.5 rounded-lg text-blue-600 active:bg-blue-50"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
+          </div>
         }
       />
       <div className="pb-28">
