@@ -171,3 +171,53 @@ Open http://localhost:3000 — works on desktop and mobile.
 - [ ] **Voice notes** — dictate notes via speech-to-text instead of typing
 - [ ] **Crew time tracking** — log hours per job per crew member
 - [ ] **Supplier contacts** — quick-dial suppliers from the app
+
+---
+
+## Prompt for a New Claude Session
+
+Use this to onboard a fresh Claude when you want to continue development:
+
+```
+You are continuing development on EstiMate — a full-service SaaS field operations app for landscaping and contracting businesses.
+
+**Read CLAUDE.md first** — it has the full project context, tech stack, conventions, and file map.
+**Read README.md** — it has what's built, what's pending (your setup checklist), and the future roadmap.
+
+Tech stack: Next.js 14 App Router + TypeScript, Tailwind CSS, Supabase (auth + PostgreSQL + storage), Stripe (payments), Konva.js (drawing/annotation), next-pwa.
+
+Live app: https://esti-mate.vercel.app
+GitHub: phil08533/EstiMate (main branch auto-deploys to Vercel)
+Supabase project: ranccgjmxcpsbxqibojx
+
+Key conventions:
+- All types are in src/lib/types/index.ts — never redeclare elsewhere
+- All DB access goes through hooks in src/lib/hooks/ — never call Supabase directly in components
+- RLS is the security boundary — Postgres row-level security handles all data isolation
+- estimates.total_area is trigger-maintained — never calculate in app code
+- Use `const { id } = params` (NOT `use(params)`) for route params
+- No `any` types — use proper TypeScript throughout
+
+Current state of the app:
+- Estimates with full workflow (capture → quote → send → payment → sold)
+- Quick-tap service catalog with category filters, cost tracking, profit margins
+- Stripe payment links for customer deposits
+- Desktop sidebar layout + mobile bottom nav
+- CRM (leads + customers), Schedule/calendar, Finances (P&L, expenses), Analytics
+- Equipment inventory with depreciation, Employee org tree
+- Notes (text + whiteboard canvas), Photo annotation (Konva)
+- Measurements with area calculator and import-to-quote
+
+Pending user setup (they haven't done this yet):
+- Run supabase/migrations/016_payment_links.sql in Supabase dashboard
+- Run supabase/migrations/017_catalog_and_markup.sql in Supabase dashboard
+- Add STRIPE_SECRET_KEY + NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY to Vercel env vars
+- Set up Stripe webhook endpoint: https://esti-mate.vercel.app/api/payments/confirm
+
+What to work on next (ask the user what they want):
+- Any features from the roadmap in README.md
+- Bug fixes or polish on existing features
+- New business requirements the user describes
+
+Always run `npm run build` before committing to catch TypeScript errors. Deploy by pushing to main.
+```
