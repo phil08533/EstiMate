@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, ClipboardList, Calendar, Users, Settings2 } from 'lucide-react'
+import { LayoutDashboard, HardHat, Calendar, Users, Settings2 } from 'lucide-react'
 import NotificationBell from './NotificationBell'
 
 export default function BottomNav() {
@@ -10,7 +10,7 @@ export default function BottomNav() {
 
   const links = [
     { href: '/dashboard',  label: 'Home',     icon: LayoutDashboard },
-    { href: '/estimates',  label: 'Jobs',      icon: ClipboardList },
+    { href: '/jobs',       label: 'Jobs',      icon: HardHat },
     { href: '/schedule',   label: 'Schedule',  icon: Calendar },
     { href: '/crm',        label: 'CRM',       icon: Users },
     { href: '/settings',   label: 'Settings',  icon: Settings2 },

@@ -71,6 +71,10 @@ export interface Estimate {
   follow_up_date: string | null
   service_date: string | null
   customer_id: string | null
+  category_id: string | null
+  crew_id: string | null
+  estimated_hours: number | null
+  recurring_job_id: string | null
   // Quote acceptance flow
   quote_token: string | null
   customer_response: CustomerResponse | null
@@ -79,11 +83,15 @@ export interface Estimate {
   created_at: string
   updated_at: string
 }
-export type EstimateInsert = Omit<Estimate, 'id' | 'total_area' | 'created_at' | 'updated_at' | 'quote_token' | 'customer_response' | 'customer_response_at' | 'customer_response_notes'> & {
+export type EstimateInsert = Omit<Estimate, 'id' | 'total_area' | 'created_at' | 'updated_at' | 'quote_token' | 'customer_response' | 'customer_response_at' | 'customer_response_notes' | 'category_id' | 'crew_id' | 'estimated_hours' | 'recurring_job_id'> & {
   quote_token?: string | null
   customer_response?: CustomerResponse | null
   customer_response_at?: string | null
   customer_response_notes?: string | null
+  category_id?: string | null
+  crew_id?: string | null
+  estimated_hours?: number | null
+  recurring_job_id?: string | null
 }
 
 // Estimate with joined profile data
@@ -565,4 +573,75 @@ export interface EstimateFilters {
   sortField: SortField
   sortDirection: SortDirection
   search?: string
+}
+
+// ─── Service Categories ────────────────────────────────────────────────────────
+export interface ServiceCategory {
+  id: string
+  team_id: string
+  name: string
+  color: string
+  is_active: boolean
+  created_at: string
+}
+export type ServiceCategoryInsert = Omit<ServiceCategory, 'id' | 'created_at'>
+
+// ─── Crews ────────────────────────────────────────────────────────────────────
+export interface Crew {
+  id: string
+  team_id: string
+  name: string
+  color: string
+  is_active: boolean
+  created_at: string
+}
+export type CrewInsert = Omit<Crew, 'id' | 'created_at'>
+
+export interface CrewMember {
+  crew_id: string
+  employee_id: string
+}
+
+export interface ScheduleBlock {
+  id: string
+  team_id: string
+  estimate_id: string
+  crew_id: string | null
+  block_date: string
+  hours: number
+  notes: string | null
+  created_at: string
+}
+export type ScheduleBlockInsert = Omit<ScheduleBlock, 'id' | 'created_at'>
+
+// ─── Training ─────────────────────────────────────────────────────────────────
+export type TrainingItemType = 'checklist' | 'text' | 'video_url'
+
+export interface TrainingModule {
+  id: string
+  team_id: string
+  title: string
+  description: string | null
+  is_public: boolean
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+export type TrainingModuleInsert = Omit<TrainingModule, 'id' | 'created_at' | 'updated_at'>
+
+export interface TrainingItem {
+  id: string
+  module_id: string
+  content: string
+  item_type: TrainingItemType
+  position: number
+  created_at: string
+}
+export type TrainingItemInsert = Omit<TrainingItem, 'id' | 'created_at'>
+
+export interface TrainingCompletion {
+  id: string
+  item_id: string
+  employee_id: string
+  completed_at: string
 }

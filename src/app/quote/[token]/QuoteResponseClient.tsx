@@ -1,12 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { CheckCircle, XCircle, MessageSquare, Zap, Phone, Mail } from 'lucide-react'
+import { CheckCircle, XCircle, MessageSquare, Zap, Phone, Mail, Images } from 'lucide-react'
 
 interface LineItem {
   id: string; description: string; quantity: number
   unit_price: number; unit: string; tax_exempt: boolean
 }
+
+interface Photo { id: string; url: string; caption: string | null }
 
 interface Props {
   estimate: {
@@ -19,6 +21,7 @@ interface Props {
   settings: { company_name?: string | null; phone?: string | null; email?: string | null; tax_rate?: number; payment_terms?: string | null; footer_notes?: string | null } | null
   subtotal: number; tax: number; total: number
   token: string
+  photos?: Photo[]
 }
 
 type Action = 'accepted' | 'declined' | 'modification_requested'
@@ -27,7 +30,7 @@ function fmt(n: number) {
   return n.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
 }
 
-export default function QuoteResponseClient({ estimate, lineItems, settings, subtotal, tax, total, token }: Props) {
+export default function QuoteResponseClient({ estimate, lineItems, settings, subtotal, tax, total, token, photos = [] }: Props) {
   const [action, setAction] = useState<Action | null>(
     estimate.customer_response as Action | null
   )
@@ -135,6 +138,27 @@ export default function QuoteResponseClient({ estimate, lineItems, settings, sub
             </div>
           </div>
         </div>
+
+        {/* Design / proposal photos */}
+        {photos.length > 0 && (
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+              <Images className="w-4 h-4 text-gray-400" />
+              <p className="font-semibold text-gray-900 text-sm">Project Photos</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 p-3">
+              {photos.map(photo => (
+                <div key={photo.id} className="rounded-xl overflow-hidden bg-gray-100">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={photo.url} alt={photo.caption ?? 'Project photo'} className="w-full object-cover aspect-video" />
+                  {photo.caption && (
+                    <p className="text-xs text-gray-500 px-2 py-1.5">{photo.caption}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Notes */}
         {estimate.comments && (

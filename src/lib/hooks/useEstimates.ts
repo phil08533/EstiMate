@@ -95,11 +95,17 @@ export function useEstimates(filters?: EstimateFilters) {
     await load()
   }
 
+  async function updateEstimate(estimateId: string, fields: Partial<EstimateInsert>) {
+    const supabase = createClient()
+    const { data } = await supabase.from('estimates').update(fields).eq('id', estimateId).select().single()
+    if (data) setEstimates(prev => prev.map(e => e.id === estimateId ? { ...e, ...data } : e))
+  }
+
   async function deleteEstimate(estimateId: string) {
     const supabase = createClient()
     await supabase.from('estimates').delete().eq('id', estimateId)
     setEstimates(prev => prev.filter(e => e.id !== estimateId))
   }
 
-  return { estimates, loading, createEstimate, updateStatus, assignEstimate, deleteEstimate, reload: load }
+  return { estimates, loading, createEstimate, updateEstimate, updateStatus, assignEstimate, deleteEstimate, reload: load }
 }

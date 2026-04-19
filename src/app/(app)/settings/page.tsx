@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Building2, Users, Wrench, LogOut, ChevronRight, HelpCircle, BarChart2, UserCog, StickyNote, BookOpen, Megaphone, Calendar, Bell, CreditCard, Store, Calculator, Clock, RefreshCw, Search } from 'lucide-react'
+import { Building2, Users, Wrench, LogOut, ChevronRight, HelpCircle, BarChart2, UserCog, StickyNote, BookOpen, Megaphone, Calendar, Bell, CreditCard, Store, Calculator, Clock, RefreshCw, Search, Tag, UsersRound } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import TopBar from '@/components/layout/TopBar'
 
@@ -24,6 +24,9 @@ const SECTIONS = [
       { href: '/schedule',           icon: Calendar,  label: 'Schedule',          description: 'Job calendar, service & follow-up dates',         color: 'text-green-600 bg-green-50' },
       { href: '/settings/reminders', icon: Bell,      label: 'Auto Reminders',    description: 'Email customers before their service date',       color: 'text-amber-600 bg-amber-50' },
       { href: '/recurring',          icon: RefreshCw, label: 'Recurring Jobs',    description: 'Maintenance contracts, auto-generate estimates',   color: 'text-blue-600 bg-blue-50' },
+      { href: '/settings/categories', icon: Tag,          label: 'Service Categories', description: 'Mowing, Landscaping, Snow Plowing — track by type',     color: 'text-orange-600 bg-orange-50' },
+      { href: '/settings/crews',     icon: UsersRound,   label: 'Crews',              description: 'Named crews, assign employees, schedule by crew',        color: 'text-violet-600 bg-violet-50' },
+      { href: '/training',           icon: BookOpen,     label: 'Employee Training',  description: 'Checklists, SOPs, onboarding guides',                    color: 'text-cyan-600 bg-cyan-50' },
       { href: '/advertising',        icon: Megaphone, label: 'Advertising',       description: 'Social posts, Facebook ads guide, mailers',       color: 'text-pink-600 bg-pink-50' },
     ],
   },
