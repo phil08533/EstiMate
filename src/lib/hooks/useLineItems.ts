@@ -65,7 +65,7 @@ export function useLineItems(estimateId: string) {
     const { data, error } = await supabase
       .from('service_items').insert({ ...input, team_id: membership.team_id }).select().single()
     if (error) throw error
-    setServiceItems(prev => [...prev, data as ServiceItem])
+    setServiceItems(prev => [...prev, data as ServiceItem].sort((a, b) => a.name.localeCompare(b.name)))
     return data as ServiceItem
   }
 

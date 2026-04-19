@@ -25,6 +25,7 @@ export default function CompanySettingsPage() {
     website: '',
     license_number: '',
     tax_rate: '',
+    default_markup: '30',
     payment_terms: 'Due on receipt',
     footer_notes: '',
     logo_scale: 1.0,
@@ -40,6 +41,7 @@ export default function CompanySettingsPage() {
       website: settings.website ?? '',
       license_number: settings.license_number ?? '',
       tax_rate: settings.tax_rate?.toString() ?? '0',
+      default_markup: settings.default_markup?.toString() ?? '30',
       payment_terms: settings.payment_terms ?? 'Due on receipt',
       footer_notes: settings.footer_notes ?? '',
       logo_scale: settings.logo_scale ?? 1.0,
@@ -82,6 +84,7 @@ export default function CompanySettingsPage() {
         website: form.website || null,
         license_number: form.license_number || null,
         tax_rate: parseFloat(form.tax_rate) || 0,
+        default_markup: parseFloat(form.default_markup) || 30,
         payment_terms: form.payment_terms || null,
         footer_notes: form.footer_notes || null,
         logo_scale: form.logo_scale,
@@ -156,6 +159,33 @@ export default function CompanySettingsPage() {
         {/* Billing defaults */}
         <div className="space-y-3">
           <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide px-1">Billing Defaults</p>
+
+          <div className="bg-green-50 border border-green-200 rounded-2xl p-4 space-y-3">
+            <div>
+              <p className="text-sm font-semibold text-green-900 mb-0.5">Default Markup %</p>
+              <p className="text-xs text-green-700 mb-2">
+                Applied to catalog items when calculating selling price from cost.
+                E.g. {form.default_markup || 30}% markup on a $100 cost = ${(100 * (1 + (parseFloat(form.default_markup) || 30) / 100)).toFixed(0)} selling price.
+              </p>
+              <Input
+                label="Default markup (%)"
+                type="number"
+                inputMode="decimal"
+                step="1"
+                min="0"
+                max="500"
+                value={form.default_markup}
+                onChange={set('default_markup')}
+                placeholder="30"
+              />
+              {form.default_markup && (
+                <p className="text-xs text-green-700 mt-1">
+                  Gross margin: {Math.round((parseFloat(form.default_markup) / (100 + parseFloat(form.default_markup))) * 100)}%
+                </p>
+              )}
+            </div>
+          </div>
+
           <div className="relative">
             <Input
               label="Default tax rate (%)"

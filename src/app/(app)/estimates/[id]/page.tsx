@@ -33,6 +33,7 @@ export default function EstimateDetailPage({ params }: { params: { id: string } 
         description: items[i].description,
         quantity: items[i].quantity,
         unit_price: 0,
+        unit_cost: 0,
         unit: items[i].unit,
         tax_exempt: false,
         service_item_id: null,

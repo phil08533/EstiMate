@@ -185,6 +185,7 @@ export interface CompanySettings {
   website: string | null
   license_number: string | null
   tax_rate: number
+  default_markup: number
   payment_terms: string | null
   footer_notes: string | null
   created_at: string
@@ -199,6 +200,8 @@ export interface ServiceItem {
   description: string | null
   unit: string
   default_price: number
+  default_cost: number
+  markup_pct: number | null
   category: string | null
   created_at: string
 }
@@ -211,6 +214,7 @@ export interface EstimateLineItem {
   description: string
   quantity: number
   unit_price: number
+  unit_cost: number
   unit: string
   tax_exempt: boolean
   sort_order: number
