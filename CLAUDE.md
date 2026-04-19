@@ -1,10 +1,10 @@
 # EstiMate — Claude Code Context
 
 ## Project Overview
-EstiMate is a mobile-first field estimator helper app for contractors. Primary use case: quickly
-capture customer info on a phone when a customer calls, track estimates through a workflow, assign
-them to team members, annotate photos taken in the field, record measurements, and share the
-estimate library with others. Also includes a Notes section for freeform text or whiteboard drawing.
+EstiMate is a full-service field operations SaaS for landscaping and contracting businesses.
+Core use case: capture customer info on a phone when a customer calls, build and send quotes,
+track jobs through a workflow, manage payments, send automated reminders, run a CRM pipeline,
+manage employees and equipment, and share the estimate library with others.
 
 ## Live App
 - **Production URL**: https://esti-mate.vercel.app
@@ -17,6 +17,8 @@ estimate library with others. Also includes a Notes section for freeform text or
 - **Tailwind CSS** — mobile-first, large touch targets
 - **Supabase** — auth (magic link email OTP + Google OAuth), PostgreSQL, file storage
 - **Konva.js + react-konva** — photo annotation/drawing canvas
+- **Stripe** — payment links (deposits), subscription billing
+- **Resend** — transactional email (quote send, reminders, notifications)
 - **next-pwa** — service worker, installable PWA
 - **Note**: `legacy-peer-deps=true` in `.npmrc` — react-konva requires React 18 peer dep workaround
 
@@ -36,7 +38,7 @@ estimate library with others. Also includes a Notes section for freeform text or
 - Supabase client created WITHOUT Database generic (`createBrowserClient<any>`) to avoid 'never' type errors
 
 ### Team / Solo User Model
-- Every user gets a personal team auto-created on first login (no manual team setup)
+- Every user gets a personal team auto-created on first login (DB trigger `handle_new_profile`)
 - Team is an internal grouping concept — solo users never need to visit the Team tab
 - `estimates.team_id` and `notes.team_id` are always required at DB level
 - Auto-creation logic lives in `useTeam` and also inline in `useEstimates.createEstimate` as fallback
@@ -59,21 +61,55 @@ Color map (in `src/lib/utils/status.ts`):
 - `sold` → green
 - `lost` → red
 
+### Quote Acceptance Flow
+1. Contractor taps **Send Quote** on an estimate → generates `quote_token` UUID, optionally emails customer
+2. Customer visits `/quote/[token]` — sees line items, total, Accept / Decline / Request Changes buttons
+3. Customer submits → `POST /api/quote/[token]/respond` updates `customer_response` + status, creates notification
+4. Contractor sees in-app notification + email (if RESEND_API_KEY set)
+5. On Accept: estimate auto-advances to `sold`; on Decline: `lost`
+
+### Auto Reminders
+- `reminder_settings` table (one row per team) — configurable `reminder_days_before[]` and methods
+- Vercel Cron: `GET /api/reminders/send` runs daily at 8 AM UTC (configured in `vercel.json`)
+- `reminder_log` table prevents duplicate sends (unique on estimate_id + days_before + method)
+- Requires `RESEND_API_KEY` env var for email; SMS toggle (Twilio) is UI-only for now
+
+### Make Client
+- "Make Client" button on estimate detail → calls `useCustomers.addCustomer` with estimate's contact info
+- Creates CRM `customers` row; button then changes to "View in CRM" linking to `/crm/customers/[id]`
+- `estimate.customer_id` FK is set on the customer row but NOT back on the estimate (do that separately if needed)
+
+### Subscription / Billing
+- `subscriptions` table (one row per team, auto-created by DB trigger when team is inserted)
+- Plans: `free` | `pro` ($49/mo) | `business` ($149/mo)
+- Status: `trialing` (14-day default) | `active` | `past_due` | `canceled`
+- Billing portal: `POST /api/billing/portal` → Stripe Billing Portal or Checkout Session
+- Requires: `STRIPE_SECRET_KEY`, `STRIPE_PRO_PRICE_ID`, `NEXT_PUBLIC_APP_URL`
+- `useSubscription` hook: exposes `isProOrBusiness`, `isTrialing`, `trialDaysLeft`
+
 ### Database Key Points
 - `estimates.total_area` is maintained by a PostgreSQL trigger — NEVER calculate it in app code
 - `measurements.area` is a `GENERATED ALWAYS AS (length * width) STORED` column
 - `share_tokens` allow unauthenticated read-only access to a team's estimates
 - `note_shares` allow unauthenticated read-only access to team notes (note_id=null) or one note
+- `estimates.quote_token` is a unique per-estimate token for the customer quote page
 - All tables have RLS enabled — test with different user sessions when debugging permission errors
 - Storage bucket name: `estimate-media`, path pattern: `{team_id}/{estimate_id}/{uuid}.ext`
 - RLS storage policy: `owner = auth.uid()` (owner column is uuid type)
 
 ## Environment Variables
-Copy from `.env.local` (gitignored). Keys are in Supabase dashboard → Settings → API.
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://ranccgjmxcpsbxqibojx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key from Supabase dashboard>
-SUPABASE_SERVICE_ROLE_KEY=<service role key from Supabase dashboard>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key>
+SUPABASE_SERVICE_ROLE_KEY=<service role key>
+# Optional — enables email features
+RESEND_API_KEY=<resend api key>
+# Optional — enables Stripe billing
+STRIPE_SECRET_KEY=<stripe secret key>
+STRIPE_PRO_PRICE_ID=<stripe price id for Pro plan>
+NEXT_PUBLIC_APP_URL=https://esti-mate.vercel.app
+# Optional — secures cron endpoint
+CRON_SECRET=<random secret>
 ```
 
 ## Running Locally
@@ -95,127 +131,247 @@ For database migrations: run SQL manually in Supabase dashboard → SQL Editor.
 
 ```
 EstiMate/
-├── .npmrc                          ← legacy-peer-deps=true (react-konva fix)
-├── .env.local                      ← local secrets (gitignored)
-├── next.config.mjs                 ← next-pwa config, PWA enabled
+├── .npmrc                           ← legacy-peer-deps=true
+├── .env.local                       ← local secrets (gitignored)
+├── vercel.json                      ← Vercel Cron: /api/reminders/send daily at 8am
+├── next.config.mjs                  ← webpack canvas stub, Supabase image domains
 ├── tailwind.config.ts
 ├── supabase/migrations/
-│   ├── 001_initial_schema.sql      ← profiles, teams, team_members, estimates,
-│   │                                  estimate_media, measurements, share_tokens
-│   ├── 002_rls_policies.sql        ← RLS for all tables + storage bucket
-│   ├── 003_triggers.sql            ← update_estimate_total_area() trigger
-│   └── 004_notes.sql               ← notes, note_shares tables + RLS
+│   ├── 001_initial_schema.sql       ← profiles, teams, team_members, estimates, estimate_media, measurements, share_tokens
+│   ├── 002_rls_policies.sql         ← RLS for all tables + storage bucket
+│   ├── 003_triggers.sql             ← update_estimate_total_area() trigger
+│   ├── 004_notes.sql                ← notes, note_shares
+│   ├── 005_auto_team_trigger.sql    ← auto-create team on profile insert
+│   ├── 007_role_based_rls.sql       ← viewer role + get_user_writable_team_ids()
+│   ├── 008_measurement_groups.sql   ← measurement_groups
+│   ├── 009_company_and_line_items.sql ← company_settings, service_items, estimate_line_items
+│   ├── 010_payments_and_expenses.sql  ← payments, expenses
+│   ├── 011_equipment.sql            ← equipment, equipment_logs
+│   ├── 012_follow_up_and_templates.sql ← estimate_templates, template_line_items, follow_up_date
+│   ├── 013_crm.sql                  ← customers, leads, contact_logs
+│   ├── 014_employees.sql            ← employees, time_entries
+│   ├── 015_service_date_and_depreciation.sql
+│   ├── 016_payment_links.sql        ← payment_links (Stripe deposit)
+│   ├── 017_vendors.sql              ← vendors (supplier contacts)
+│   ├── 018_subscriptions.sql        ← subscriptions (SaaS billing), auto-created on team insert
+│   ├── 019_quote_and_reminders.sql  ← estimates.quote_token + customer_response cols, reminder_settings, reminder_log
+│   └── 020_notifications.sql        ← notifications (in-app)
 └── src/
-    ├── middleware.ts                ← session refresh + route protection
+    ├── middleware.ts                 ← session refresh; public paths: /login /auth/callback /shared /pay /quote /api/quote
     ├── app/
-    │   ├── layout.tsx               ← root layout, system fonts (no Google Fonts)
+    │   ├── layout.tsx
     │   ├── globals.css
-    │   ├── page.tsx                 ← redirects / → /estimates
-    │   ├── (auth)/login/page.tsx    ← magic link + Google OAuth login
-    │   ├── auth/callback/route.ts   ← OAuth callback, auto-joins team if invited
-    │   ├── (app)/layout.tsx         ← auth guard (redirects to /login), bottom nav
-    │   ├── (app)/estimates/
-    │   │   ├── page.tsx             ← estimate list, sort/filter, FAB
-    │   │   ├── new/page.tsx         ← quick capture form wrapper
-    │   │   ├── [id]/page.tsx        ← estimate detail: status, assignee, media, measurements
-    │   │   └── [id]/edit/page.tsx   ← edit customer info
-    │   ├── (app)/notes/
-    │   │   ├── page.tsx             ← notes list grouped by date, FAB creates new note
-    │   │   └── [id]/page.tsx        ← note editor (text or draw), share, delete
-    │   ├── (app)/team/page.tsx      ← team name, members, invite, share links
-    │   └── shared/
-    │       ├── [token]/page.tsx     ← public read-only estimates view (no auth)
-    │       └── notes/[token]/page.tsx ← public read-only notes view (no auth)
+    │   ├── page.tsx                  ← redirects / → /dashboard (or /login)
+    │   ├── (auth)/login/page.tsx
+    │   ├── auth/callback/route.ts
+    │   ├── api/
+    │   │   ├── payments/
+    │   │   │   ├── intent/route.ts   ← Stripe PaymentIntent for deposit links
+    │   │   │   └── confirm/route.ts  ← Stripe webhook
+    │   │   ├── quote/
+    │   │   │   ├── send/route.ts     ← POST: email quote to customer (needs RESEND_API_KEY)
+    │   │   │   └── [token]/respond/route.ts ← POST: customer accepts/declines/modifies
+    │   │   ├── reminders/
+    │   │   │   └── send/route.ts     ← GET: cron job, sends day-before reminders
+    │   │   └── billing/
+    │   │       └── portal/route.ts   ← POST: Stripe billing portal / checkout session
+    │   ├── quote/[token]/
+    │   │   ├── page.tsx              ← public customer quote page (no auth)
+    │   │   └── QuoteResponseClient.tsx ← Accept / Decline / Request Changes UI
+    │   ├── shared/
+    │   │   ├── [token]/page.tsx
+    │   │   └── notes/[token]/page.tsx
+    │   ├── pay/[token]/
+    │   │   ├── page.tsx
+    │   │   └── PaymentClient.tsx
+    │   └── (app)/
+    │       ├── layout.tsx            ← auth guard, SideNav (desktop) + BottomNav (mobile)
+    │       ├── dashboard/page.tsx    ← HOME: greeting, overdue alerts, KPIs, today's jobs, recent estimates
+    │       ├── estimates/
+    │       │   ├── page.tsx
+    │       │   ├── new/page.tsx
+    │       │   ├── [id]/page.tsx     ← detail: MakeClientButton, SendQuoteButton, tabs
+    │       │   ├── [id]/edit/page.tsx
+    │       │   └── [id]/invoice/page.tsx
+    │       ├── notes/
+    │       │   ├── page.tsx
+    │       │   └── [id]/page.tsx
+    │       ├── crm/
+    │       │   ├── page.tsx
+    │       │   ├── leads/[id]/page.tsx
+    │       │   └── customers/[id]/page.tsx
+    │       ├── employees/page.tsx
+    │       ├── equipment/
+    │       │   ├── page.tsx
+    │       │   └── [id]/page.tsx
+    │       ├── vendors/page.tsx       ← supplier contacts with quick-dial
+    │       ├── time/page.tsx          ← team-wide time log, log hours per job
+    │       ├── calculator/page.tsx    ← material calculator (mulch/rock/soil/sod/seed)
+    │       ├── schedule/page.tsx
+    │       ├── finances/page.tsx
+    │       ├── analytics/page.tsx
+    │       ├── advertising/page.tsx
+    │       ├── resources/page.tsx
+    │       ├── help/page.tsx
+    │       ├── team/page.tsx          ← alias → /settings/team
+    │       └── settings/
+    │           ├── page.tsx           ← hub with 4 groups (Business, Operations, Insights, Tools)
+    │           ├── company/page.tsx
+    │           ├── team/page.tsx
+    │           ├── billing/page.tsx   ← plan tiers (Free/Pro/Business) + Stripe portal
+    │           └── reminders/page.tsx ← days-before config, email/SMS toggle, custom message
     ├── components/
     │   ├── ui/
-    │   │   ├── Button.tsx           ← variants: primary/secondary/ghost/danger, sizes sm/md/lg
+    │   │   ├── Button.tsx            ← variants: primary/secondary/ghost/danger, sizes sm/md/lg
     │   │   ├── Badge.tsx
     │   │   ├── Input.tsx
     │   │   ├── Textarea.tsx
-    │   │   ├── Modal.tsx            ← bottom sheet on mobile, centered on desktop
-    │   │   └── Spinner.tsx
+    │   │   ├── Modal.tsx             ← bottom sheet mobile, centered desktop
+    │   │   ├── Spinner.tsx
+    │   │   └── PageHelp.tsx
     │   ├── layout/
-    │   │   ├── BottomNav.tsx        ← Estimates | Notes | Team | Sign out
-    │   │   └── TopBar.tsx           ← back button + title + optional right slot
+    │   │   ├── TopBar.tsx
+    │   │   ├── BottomNav.tsx         ← 5 tabs: Home/Jobs/Schedule/CRM/Settings + NotificationBell
+    │   │   ├── SideNav.tsx           ← dark sidebar: Primary (Dashboard/Jobs/Schedule/CRM/Finances) + Secondary (Analytics/Time/Notes/Vendors/Calculator/Advertising/Equipment/Settings) + NotificationBell
+    │   │   └── NotificationBell.tsx  ← badge count + slide-down panel, mark read
     │   ├── estimates/
-    │   │   ├── EstimateCard.tsx     ← list card with status badge, assignee, area
+    │   │   ├── EstimateCard.tsx
     │   │   ├── EstimateStatusBadge.tsx
-    │   │   ├── EstimateFilters.tsx  ← search bar + status filter chips + sort
-    │   │   ├── QuickCaptureForm.tsx ← name/phone/email/address/comments form
-    │   │   ├── StatusSelect.tsx     ← inline status dropdown
-    │   │   └── AssigneeSelect.tsx   ← inline assignee dropdown
+    │   │   ├── EstimateFilters.tsx
+    │   │   ├── QuickCaptureForm.tsx
+    │   │   ├── StatusSelect.tsx
+    │   │   ├── AssigneeSelect.tsx
+    │   │   ├── LineItemsSection.tsx
+    │   │   ├── PaymentsSection.tsx
+    │   │   ├── MakeClientButton.tsx  ← converts estimate contact → CRM customer
+    │   │   └── SendQuoteButton.tsx   ← generates quote_token, emails customer, shows response status
     │   ├── media/
-    │   │   ├── MediaSection.tsx     ← tab container for media on estimate detail
-    │   │   ├── MediaUploader.tsx    ← file input with camera capture
-    │   │   ├── MediaGrid.tsx        ← thumbnail grid
-    │   │   ├── MediaViewer.tsx      ← fullscreen viewer with annotation trigger
-    │   │   ├── PhotoAnnotator.tsx   ← Konva canvas: pen/arrow/rect/text, undo, save
-    │   │   ├── VideoPlayer.tsx      ← HTML5 video player
-    │   │   └── MediaCommentForm.tsx ← comment on media items
+    │   │   ├── MediaSection.tsx
+    │   │   ├── MediaUploader.tsx
+    │   │   ├── MediaGrid.tsx
+    │   │   ├── MediaViewer.tsx
+    │   │   ├── PhotoAnnotator.tsx
+    │   │   ├── VideoPlayer.tsx
+    │   │   └── MediaCommentForm.tsx
     │   ├── measurements/
     │   │   ├── MeasurementsSection.tsx
-    │   │   ├── MeasurementForm.tsx  ← L × W → area preview
+    │   │   ├── MeasurementForm.tsx
     │   │   ├── MeasurementList.tsx
-    │   │   └── TotalAreaDisplay.tsx ← reads estimates.total_area (trigger-maintained)
+    │   │   └── TotalAreaDisplay.tsx
     │   ├── notes/
-    │   │   ├── NoteCanvas.tsx       ← Konva whiteboard: pen/text/eraser/pan,
-    │   │   │                           wheel+pinch zoom, undo, color+stroke picker
-    │   │   ├── NoteEditor.tsx       ← text/draw mode toggle, title, debounced autosave
-    │   │   ├── NoteCard.tsx         ← list card showing title + preview
-    │   │   ├── NoteShareSheet.tsx   ← share this note / share all notes
-    │   │   └── NotePublicRenderer.tsx ← client component for public notes view
+    │   │   ├── NoteCanvas.tsx
+    │   │   ├── NoteEditor.tsx
+    │   │   ├── NoteCard.tsx
+    │   │   ├── NoteShareSheet.tsx
+    │   │   └── NotePublicRenderer.tsx
     │   └── team/
-    │       └── ShareLinkCard.tsx    ← generate/copy/delete estimate share links
+    │       └── ShareLinkCard.tsx
     └── lib/
         ├── supabase/
-        │   ├── client.ts            ← createBrowserClient (no DB generic)
-        │   ├── server.ts            ← createServerClient + createServiceClient
-        │   └── storage.ts           ← upload/signed URL helpers
+        │   ├── client.ts             ← createBrowserClient<any>
+        │   ├── server.ts             ← createServerClient + createServiceClient
+        │   └── storage.ts
         ├── hooks/
-        │   ├── useAuth.ts           ← user, profile, signOut; upserts profile on load
-        │   ├── useTeam.ts           ← team, members; auto-creates team if none exists
-        │   ├── useEstimates.ts      ← list with filters; createEstimate auto-creates team
-        │   ├── useEstimate.ts       ← single estimate + updateEstimate
-        │   ├── useMedia.ts          ← upload, list, delete media for an estimate
-        │   ├── useMeasurements.ts   ← add/list/delete measurements
-        │   └── useNotes.ts          ← useNotes (list+CRUD+share) + useNote (single)
+        │   ├── useAuth.ts
+        │   ├── useTeam.ts
+        │   ├── useEstimates.ts
+        │   ├── useEstimate.ts
+        │   ├── useMedia.ts
+        │   ├── useMeasurements.ts
+        │   ├── useNotes.ts
+        │   ├── usePayments.ts
+        │   ├── useExpenses.ts
+        │   ├── useLineItems.ts
+        │   ├── useCompanySettings.ts
+        │   ├── useEquipment.ts
+        │   ├── useEmployees.ts       ← also exports useTimeEntries
+        │   ├── useCRM.ts             ← useCustomers, useLeads, useContactLogs
+        │   ├── useTemplates.ts
+        │   ├── usePaymentLinks.ts
+        │   ├── useRevenue.ts
+        │   ├── useVendors.ts         ← vendor CRUD
+        │   ├── useSubscription.ts    ← plan, status, trialDaysLeft
+        │   ├── useNotifications.ts   ← in-app notifications, markRead
+        │   └── useReminderSettings.ts ← get/upsert reminder config
         ├── utils/
-        │   ├── status.ts            ← getStatusLabel(), getStatusColor()
-        │   ├── format.ts            ← formatPhone, formatArea, formatDate, formatDateRelative
-        │   ├── share.ts             ← generateShareToken(), getShareUrl()
-        │   └── area.ts              ← area calculation helpers
-        └── types/index.ts           ← ALL TypeScript interfaces (single source of truth)
+        │   ├── status.ts
+        │   ├── format.ts
+        │   ├── share.ts
+        │   └── area.ts
+        ├── data/
+        │   ├── stateTaxData.ts
+        │   └── contractorTips.ts
+        └── types/index.ts            ← ALL TypeScript types (single source of truth)
 ```
 
 ## Key Data Flows
 
-### New user signs in (Google OAuth)
-1. Google redirects to `/auth/callback?code=...`
-2. `exchangeCodeForSession` creates Supabase session
-3. `useAuth` upserts profile row (handles trigger race condition)
-4. `useTeam` upserts profile again (safety) then inserts team + team_member row
-5. User lands on `/estimates` with their personal team ready
+### Dashboard home
+1. `useEstimates` + `useRevenue` + `useAuth` run in parallel
+2. Stats computed client-side: today's jobs, overdue follow-ups, open estimates, month revenue
+3. Alerts shown for overdue follow-ups and quotes awaiting customer response
 
-### Creating an estimate
-1. User taps FAB → `/estimates/new`
-2. `QuickCaptureForm` collects customer info
-3. `useEstimates.createEstimate` looks up team membership
-4. If no team found (edge case), auto-creates team inline
-5. Inserts estimate row → redirects to `/estimates/[id]`
+### Quote flow (contractor → customer → contractor)
+1. Contractor opens estimate → Quote tab → "Send Quote to Customer"
+2. `SendQuoteButton` generates `quote_token`, stores on estimate, POSTs to `/api/quote/send`
+3. `/api/quote/send` emails customer via Resend with quote URL + Accept/Decline CTA
+4. Customer visits `/quote/[token]` — server renders line items using service role client
+5. Customer taps Accept/Decline/Request Changes → `POST /api/quote/[token]/respond`
+6. API updates `estimates.customer_response`, creates `notifications` row, emails contractor
+7. Contractor sees badge on `NotificationBell` → clicks → navigates to estimate
 
-### Notes autosave
-1. User types in `NoteEditor` or draws on `NoteCanvas`
-2. `scheduleAutoSave` debounces 800ms
-3. Pending updates merged in `pendingRef` so rapid changes batch correctly
-4. `useNote.updateNote` patches the DB row
+### Auto reminders (cron)
+1. Vercel Cron fires `GET /api/reminders/send` at 8 AM UTC daily
+2. Fetches all teams with `reminder_settings.is_enabled = true`
+3. For each `days_before` value, computes target date (today + N days)
+4. Queries `estimates` with `service_date = targetDate` and `status = 'sold'`
+5. Skips if `reminder_log` already has an entry for (estimate_id, days_before, method)
+6. Sends email via Resend; inserts `reminder_log` row
 
-### Share links
-- Estimates: `share_tokens` table → `/shared/[token]` (server-rendered, no auth)
-- Notes: `note_shares` table → `/shared/notes/[token]` (server-rendered, no auth)
-- Both use service role client to bypass RLS for public access
+### Make Client
+1. Estimate detail shows "Make Client" button (violet pill) when `customer_id` is null
+2. Click → `useCustomers.addCustomer` with estimate's name/phone/email/address
+3. Button changes to green "View in CRM" → links to `/crm/customers/[id]`
+
+### New user signs in
+1. Google → `/auth/callback` → session created
+2. `useAuth` upserts profile row
+3. DB trigger `handle_new_profile` creates team + team_member
+4. DB trigger `handle_new_team_subscription` creates `subscriptions` row (plan='free', status='trialing')
+5. User lands on `/dashboard`
+
+### Notifications
+- Inserted by API routes (service role) into `notifications` table
+- `useNotifications` hook polls on mount, exposes `unreadCount`
+- `NotificationBell` shows badge, dropdown panel, mark-all-read
+
+## Database Migrations (run in order)
+| File | Description |
+|------|-------------|
+| 001 | Core tables |
+| 002 | RLS policies |
+| 003 | Triggers |
+| 004 | Notes |
+| 005 | Auto-team trigger |
+| 007 | Role-based RLS |
+| 008 | Measurement groups |
+| 009 | Company settings + line items |
+| 010 | Payments + expenses |
+| 011 | Equipment |
+| 012 | Templates + follow-up dates |
+| 013 | CRM (customers, leads, contact_logs) |
+| 014 | Employees + time_entries |
+| 015 | Service dates + depreciation |
+| 016 | Payment links (Stripe deposits) |
+| 017 | Vendors (supplier contacts) |
+| 018 | Subscriptions (SaaS billing) |
+| 019 | Quote tokens + reminder settings + reminder_log |
+| 020 | Notifications |
 
 ## Known Issues / TODOs
+- SMS reminders: UI toggle exists, `send_sms` stored — actual Twilio integration not yet wired
+- Stripe webhooks for subscription lifecycle (invoice.paid, customer.subscription.updated) need a handler at `/api/billing/webhook`
+- `estimates.customer_id` is NOT auto-set when Make Client is clicked (only creates CRM row)
 - Photo annotation export (flattened PNG thumbnail) is v2
-- Full offline sync (optimistic updates + queue) is v2 — v1 caches app shell only
+- Full offline sync is v2 — v1 caches app shell only
 - Magic link email requires SMTP configured in Supabase (Google OAuth works without it)
-- If team auto-creation fails (very rare), Team page shows spinner → user must refresh

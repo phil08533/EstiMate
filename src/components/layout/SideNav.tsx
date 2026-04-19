@@ -3,21 +3,27 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  ClipboardList, Calendar, Users, DollarSign, Settings2,
-  BarChart2, StickyNote, LogOut, Zap, Megaphone, Wrench,
+  LayoutDashboard, ClipboardList, Calendar, Users, DollarSign, Settings2,
+  BarChart2, StickyNote, LogOut, Zap, Megaphone, Wrench, Store,
+  Clock, Calculator,
 } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
+import NotificationBell from './NotificationBell'
 
 const PRIMARY = [
-  { href: '/estimates',  label: 'Jobs',      icon: ClipboardList },
-  { href: '/schedule',   label: 'Schedule',  icon: Calendar },
-  { href: '/crm',        label: 'CRM',       icon: Users },
-  { href: '/finances',   label: 'Finances',  icon: DollarSign },
+  { href: '/dashboard',  label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/estimates',  label: 'Jobs',       icon: ClipboardList },
+  { href: '/schedule',   label: 'Schedule',   icon: Calendar },
+  { href: '/crm',        label: 'CRM',        icon: Users },
+  { href: '/finances',   label: 'Finances',   icon: DollarSign },
 ]
 
 const SECONDARY = [
   { href: '/analytics',   label: 'Analytics',   icon: BarChart2 },
+  { href: '/time',        label: 'Time',         icon: Clock },
   { href: '/notes',       label: 'Notes',        icon: StickyNote },
+  { href: '/vendors',     label: 'Vendors',      icon: Store },
+  { href: '/calculator',  label: 'Calculator',   icon: Calculator },
   { href: '/advertising', label: 'Advertising',  icon: Megaphone },
   { href: '/equipment',   label: 'Equipment',    icon: Wrench },
   { href: '/settings',    label: 'Settings',     icon: Settings2 },
@@ -25,7 +31,7 @@ const SECONDARY = [
 
 function NavItem({ href, label, icon: Icon }: { href: string; label: string; icon: typeof Zap }) {
   const pathname = usePathname()
-  const active = pathname === href || (href !== '/settings' && pathname.startsWith(href))
+  const active = pathname === href || (href !== '/settings' && href !== '/dashboard' && pathname.startsWith(href))
   return (
     <Link
       href={href}
@@ -54,6 +60,9 @@ export default function SideNav() {
           <Zap className="w-4 h-4 text-white" />
         </div>
         <span className="text-white font-bold text-lg tracking-tight">EstiMate</span>
+        <div className="ml-auto">
+          <NotificationBell />
+        </div>
       </div>
 
       {/* Nav */}
