@@ -1,12 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { Phone, Mail, MapPin, Plus, Trash2 } from 'lucide-react'
+import { Phone, Mail, MapPin, Plus, Trash2, ClipboardList, ChevronRight } from 'lucide-react'
 import { useCustomers, useContactLogs } from '@/lib/hooks/useCRM'
+import { useCustomerEstimates } from '@/lib/hooks/useCustomerEstimates'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import TopBar from '@/components/layout/TopBar'
 import Spinner from '@/components/ui/Spinner'
 import Button from '@/components/ui/Button'
+import { getStatusColor } from '@/lib/utils/status'
 import type { ContactLogType } from '@/lib/types'
 
 const LOG_TYPES: { value: ContactLogType; label: string }[] = [
@@ -21,6 +24,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
   const { id } = params
   const { customers, loading, updateCustomer, deleteCustomer } = useCustomers()
   const { logs, loading: logsLoading, addLog, deleteLog } = useContactLogs(id)
+  const { estimates: jobHistory, loading: jobsLoading } = useCustomerEstimates(id)
   const router = useRouter()
   const [logType, setLogType] = useState<ContactLogType>('call')
   const [logText, setLogText] = useState('')
@@ -34,7 +38,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
 
   const customer = customers.find(c => c.id === id)
 
-  if (loading || logsLoading) return <><TopBar title="Client" backHref="/crm" /><div className="flex justify-center py-12"><Spinner size="lg" /></div></>
+  if (loading || logsLoading || jobsLoading) return <><TopBar title="Client" backHref="/crm" /><div className="flex justify-center py-12"><Spinner size="lg" /></div></>
   if (!customer) return <><TopBar title="Client" backHref="/crm" /><div className="p-4 text-center text-gray-500">Not found</div></>
 
   function startEdit() {
@@ -137,6 +141,44 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
             {customer.notes && <p className="text-sm text-gray-600 bg-gray-50 rounded-xl p-3">{customer.notes}</p>}
           </div>
         )}
+
+        {/* Job History */}
+        <div>
+          <div className="flex items-center justify-between px-1 mb-2">
+            <h3 className="font-semibold text-gray-900">Job History</h3>
+            <span className="text-xs text-gray-400">{jobHistory.length} job{jobHistory.length !== 1 ? 's' : ''}</span>
+          </div>
+          {jobHistory.length === 0 ? (
+            <div className="bg-white border border-gray-200 rounded-2xl p-6 text-center">
+              <ClipboardList className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+              <p className="text-sm text-gray-400">No linked estimates yet</p>
+              <p className="text-xs text-gray-400 mt-1">Use &ldquo;Make Client&rdquo; on an estimate to link it here</p>
+            </div>
+          ) : (
+            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+              {jobHistory.map((est, i) => (
+                <Link
+                  key={est.id}
+                  href={`/estimates/${est.id}`}
+                  className={`flex items-center gap-3 px-4 py-3 active:bg-gray-50 ${i < jobHistory.length - 1 ? 'border-b border-gray-100' : ''}`}
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900 text-sm truncate">{est.customer_name}</p>
+                    <p className="text-xs text-gray-400">
+                      {est.service_date
+                        ? new Date(est.service_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                        : new Date(est.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
+                  </div>
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${getStatusColor(est.status)}`}>
+                    {est.status.replace('_', ' ')}
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0" />
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Contact log */}
         <div>

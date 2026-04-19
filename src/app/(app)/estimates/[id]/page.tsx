@@ -13,6 +13,8 @@ import MediaSection from '@/components/media/MediaSection'
 import MeasurementsSection from '@/components/measurements/MeasurementsSection'
 import LineItemsSection from '@/components/estimates/LineItemsSection'
 import PaymentsSection from '@/components/estimates/PaymentsSection'
+import MakeClientButton from '@/components/estimates/MakeClientButton'
+import SendQuoteButton from '@/components/estimates/SendQuoteButton'
 import Spinner from '@/components/ui/Spinner'
 import type { EstimateStatus } from '@/lib/types'
 
@@ -105,7 +107,10 @@ export default function EstimateDetailPage({ params }: { params: { id: string } 
 
         {/* Customer info card */}
         <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-2">
-          <h2 className="font-semibold text-gray-900">{estimate.customer_name}</h2>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <h2 className="font-semibold text-gray-900">{estimate.customer_name}</h2>
+            <MakeClientButton estimate={estimate} />
+          </div>
           {estimate.customer_phone && (
             <a href={`tel:${estimate.customer_phone}`} className="flex items-center gap-2 text-blue-600 text-sm">
               <Phone className="w-4 h-4" />
@@ -185,7 +190,15 @@ export default function EstimateDetailPage({ params }: { params: { id: string } 
             ))}
           </div>
           <div className="p-4">
-            {tab === 'quote' && <LineItemsSection estimateId={id} />}
+            {tab === 'quote' && (
+              <div className="space-y-4">
+                <LineItemsSection estimateId={id} />
+                <div className="border-t border-gray-100 pt-4">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Send Quote</p>
+                  <SendQuoteButton estimate={estimate} />
+                </div>
+              </div>
+            )}
             {tab === 'media' && <MediaSection estimateId={id} teamId={estimate.team_id} />}
             {tab === 'measurements' && (
               <MeasurementsSection

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Trash2, TrendingDown, TrendingUp, DollarSign } from 'lucide-react'
+import { Plus, Trash2, TrendingDown, TrendingUp, DollarSign, Download } from 'lucide-react'
 import { useExpenses } from '@/lib/hooks/useExpenses'
 import { useRevenue } from '@/lib/hooks/useRevenue'
 import TopBar from '@/components/layout/TopBar'
@@ -54,6 +54,15 @@ function formatMonth(ym: string) {
   return new Date(parseInt(y), parseInt(m) - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 }
 
+function downloadCSV(filename: string, rows: string[][]) {
+  const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n')
+  const blob = new Blob([csv], { type: 'text/csv' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url; a.download = filename; a.click()
+  URL.revokeObjectURL(url)
+}
+
 export default function FinancesPage() {
   const { expenses, loading: expLoading, addExpense, deleteExpense } = useExpenses()
   const { payments, loading: revLoading, totalRevenue } = useRevenue()
@@ -96,6 +105,20 @@ export default function FinancesPage() {
     setSaving(false)
     setDesc(''); setAmount(''); setVendor('')
     setShowForm(false)
+  }
+
+  function exportRevenue() {
+    const rows = [['Date', 'Amount', 'Method', 'Notes']]
+    for (const p of [...payments].sort((a, b) => b.payment_date.localeCompare(a.payment_date)))
+      rows.push([p.payment_date, p.amount.toFixed(2), METHOD_LABELS[p.payment_method], p.notes ?? ''])
+    downloadCSV('revenue.csv', rows)
+  }
+
+  function exportExpenses() {
+    const rows = [['Date', 'Description', 'Category', 'Vendor', 'Amount']]
+    for (const e of [...expenses].sort((a, b) => b.expense_date.localeCompare(a.expense_date)))
+      rows.push([e.expense_date, e.description, catLabel(e.category), e.vendor ?? '', e.amount.toFixed(2)])
+    downloadCSV('expenses.csv', rows)
   }
 
   if (loading) return <><TopBar title="Finances" /><div className="flex justify-center py-12"><Spinner size="lg" /></div></>
@@ -177,10 +200,18 @@ export default function FinancesPage() {
             <>
               <div className="bg-green-50 border border-green-200 rounded-2xl p-4 flex items-center gap-3">
                 <TrendingUp className="w-8 h-8 text-green-600 flex-shrink-0" />
-                <div>
+                <div className="flex-1">
                   <p className="text-2xl font-bold text-green-800">{fmt(totalRevenue)}</p>
                   <p className="text-xs text-green-600">{payments.length} payments received</p>
                 </div>
+                {payments.length > 0 && (
+                  <button
+                    onClick={exportRevenue}
+                    className="flex items-center gap-1.5 text-xs font-medium text-green-700 bg-white border border-green-300 rounded-lg px-3 py-1.5 active:bg-green-50"
+                  >
+                    <Download className="w-3.5 h-3.5" />CSV
+                  </button>
+                )}
               </div>
 
               {payments.length === 0 && (
@@ -221,10 +252,18 @@ export default function FinancesPage() {
             <>
               <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center gap-3">
                 <TrendingDown className="w-8 h-8 text-red-500 flex-shrink-0" />
-                <div>
+                <div className="flex-1">
                   <p className="text-2xl font-bold text-red-700">{fmt(totalExpenses)}</p>
                   <p className="text-xs text-red-500">{expenses.length} expense entries</p>
                 </div>
+                {expenses.length > 0 && (
+                  <button
+                    onClick={exportExpenses}
+                    className="flex items-center gap-1.5 text-xs font-medium text-red-700 bg-white border border-red-300 rounded-lg px-3 py-1.5 active:bg-red-50"
+                  >
+                    <Download className="w-3.5 h-3.5" />CSV
+                  </button>
+                )}
               </div>
 
               {showForm ? (

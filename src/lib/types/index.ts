@@ -54,6 +54,7 @@ export interface TeamMember {
 export type TeamMemberInsert = Omit<TeamMember, 'id' | 'created_at'>
 
 export type EstimateStatus = 'need_to_estimate' | 'sent' | 'sold' | 'lost'
+export type CustomerResponse = 'accepted' | 'declined' | 'modification_requested'
 
 export interface Estimate {
   id: string
@@ -70,10 +71,20 @@ export interface Estimate {
   follow_up_date: string | null
   service_date: string | null
   customer_id: string | null
+  // Quote acceptance flow
+  quote_token: string | null
+  customer_response: CustomerResponse | null
+  customer_response_at: string | null
+  customer_response_notes: string | null
   created_at: string
   updated_at: string
 }
-export type EstimateInsert = Omit<Estimate, 'id' | 'total_area' | 'created_at' | 'updated_at'>
+export type EstimateInsert = Omit<Estimate, 'id' | 'total_area' | 'created_at' | 'updated_at' | 'quote_token' | 'customer_response' | 'customer_response_at' | 'customer_response_notes'> & {
+  quote_token?: string | null
+  customer_response?: CustomerResponse | null
+  customer_response_at?: string | null
+  customer_response_notes?: string | null
+}
 
 // Estimate with joined profile data
 export interface EstimateWithProfiles extends Estimate {
@@ -428,7 +439,121 @@ export interface TimeEntry {
   notes: string | null
   created_at: string
 }
-export type TimeEntryInsert = Omit<TimeEntry, 'id' | 'created_at'>
+export type TimeEntryInsert = Omit<TimeEntry, 'id' | 'created_at' | 'clock_out'> & { clock_out?: string | null }
+
+// ─── Reminder settings ────────────────────────────────────────────────────────
+
+export interface ReminderSettings {
+  id: string
+  team_id: string
+  is_enabled: boolean
+  reminder_days_before: number[]
+  send_email: boolean
+  send_sms: boolean
+  message_template: string | null
+  created_at: string
+  updated_at: string
+}
+export type ReminderSettingsInsert = Omit<ReminderSettings, 'id' | 'created_at' | 'updated_at'>
+
+export interface ReminderLog {
+  id: string
+  team_id: string
+  estimate_id: string
+  sent_at: string
+  days_before: number
+  method: 'email' | 'sms'
+  recipient: string | null
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export type NotificationType =
+  | 'quote_accepted'
+  | 'quote_declined'
+  | 'quote_modification'
+  | 'reminder_sent'
+  | 'payment_received'
+  | 'follow_up_due'
+  | 'job_today'
+
+export interface Notification {
+  id: string
+  team_id: string
+  user_id: string | null
+  type: NotificationType
+  title: string
+  body: string | null
+  data: Record<string, unknown> | null
+  read_at: string | null
+  created_at: string
+}
+export type NotificationInsert = Omit<Notification, 'id' | 'created_at'>
+
+// ─── Vendors ─────────────────────────────────────────────────────────────────
+
+export type VendorCategory = 'nursery' | 'stone' | 'lumber' | 'rental' | 'fuel' | 'hardware' | 'landscaping' | 'other'
+
+export interface Vendor {
+  id: string
+  team_id: string
+  created_by: string | null
+  name: string
+  category: VendorCategory | null
+  contact_name: string | null
+  phone: string | null
+  email: string | null
+  address: string | null
+  website: string | null
+  notes: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+export type VendorInsert = Omit<Vendor, 'id' | 'created_at' | 'updated_at'>
+
+// ─── Subscriptions ────────────────────────────────────────────────────────────
+
+export type SubscriptionPlan = 'free' | 'pro' | 'business'
+export type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'canceled' | 'incomplete'
+
+export interface Subscription {
+  id: string
+  team_id: string
+  plan: SubscriptionPlan
+  status: SubscriptionStatus
+  stripe_customer_id: string | null
+  stripe_subscription_id: string | null
+  trial_ends_at: string | null
+  current_period_start: string | null
+  current_period_end: string | null
+  canceled_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+// ─── Recurring Jobs ───────────────────────────────────────────────────────────
+export type RecurrenceFrequency = 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'annually'
+
+export interface RecurringJob {
+  id: string
+  team_id: string
+  customer_name: string
+  customer_phone: string | null
+  customer_email: string | null
+  customer_address: string | null
+  customer_id: string | null
+  title: string
+  description: string | null
+  frequency: RecurrenceFrequency
+  next_date: string
+  assigned_to: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type RecurringJobInsert = Omit<RecurringJob, 'id' | 'created_at' | 'updated_at'>
 
 // ─── Sort / filter types ───────────────────────────────────────────────────────
 export type SortField = 'customer_name' | 'status' | 'created_at' | 'updated_at' | 'total_area'
