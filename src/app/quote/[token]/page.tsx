@@ -15,6 +15,14 @@ export default async function QuotePage({ params }: { params: { token: string } 
 
   if (!estimate) notFound()
 
+  // Fetch media attached to this estimate (images for the design/proposal)
+  const { data: media } = await supabase
+    .from('estimate_media')
+    .select('id, file_path, file_type, caption')
+    .eq('estimate_id', estimate.id)
+    .in('file_type', ['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+    .order('created_at')
+
   const lineItems = (estimate.estimate_line_items ?? []) as Array<{
     id: string; description: string; quantity: number; unit_price: number
     unit: string; tax_exempt: boolean
@@ -30,6 +38,13 @@ export default async function QuotePage({ params }: { params: { token: string } 
   const tax      = taxable * (taxRate / 100)
   const total    = subtotal + tax
 
+  // Build public URLs for images
+  const photoUrls = (media ?? []).map(m => ({
+    id: m.id,
+    caption: m.caption as string | null,
+    url: supabase.storage.from('estimate-media').getPublicUrl(m.file_path).data.publicUrl,
+  }))
+
   return (
     <QuoteResponseClient
       estimate={estimate}
@@ -39,6 +54,7 @@ export default async function QuotePage({ params }: { params: { token: string } 
       tax={tax}
       total={total}
       token={params.token}
+      photos={photoUrls}
     />
   )
 }

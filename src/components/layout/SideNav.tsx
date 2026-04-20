@@ -5,22 +5,25 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, ClipboardList, Calendar, Users, DollarSign, Settings2,
   BarChart2, StickyNote, LogOut, Zap, Megaphone, Wrench, Store,
-  Clock, Calculator, Search, RefreshCw,
+  Clock, Calculator, Search, RefreshCw, HardHat, BookOpen, Smartphone,
 } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import NotificationBell from './NotificationBell'
 
 const PRIMARY = [
   { href: '/dashboard',  label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/estimates',  label: 'Jobs',       icon: ClipboardList },
+  { href: '/jobs',       label: 'Jobs',       icon: HardHat },
+  { href: '/estimates',  label: 'Estimates',  icon: ClipboardList },
   { href: '/schedule',   label: 'Schedule',   icon: Calendar },
   { href: '/crm',        label: 'CRM',        icon: Users },
   { href: '/finances',   label: 'Finances',   icon: DollarSign },
 ]
 
 const SECONDARY = [
+  { href: '/portal',       label: 'My Portal',    icon: Smartphone },
   { href: '/search',       label: 'Search',       icon: Search },
   { href: '/recurring',    label: 'Recurring',    icon: RefreshCw },
+  { href: '/training',     label: 'Training',     icon: BookOpen },
   { href: '/analytics',   label: 'Analytics',   icon: BarChart2 },
   { href: '/time',        label: 'Time',         icon: Clock },
   { href: '/notes',       label: 'Notes',        icon: StickyNote },

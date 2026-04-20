@@ -83,6 +83,10 @@ export default function RecurringPage() {
       service_date: job.next_date,
       follow_up_date: null,
       assigned_to: job.assigned_to,
+      category_id: null,
+      crew_id: null,
+      estimated_hours: null,
+      recurring_job_id: job.id,
     })
     // Advance next_date
     await updateJob(job.id, { next_date: advanceDate(job.next_date, job.frequency) })

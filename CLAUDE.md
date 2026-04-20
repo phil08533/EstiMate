@@ -93,9 +93,28 @@ Color map (in `src/lib/utils/status.ts`):
 - `share_tokens` allow unauthenticated read-only access to a team's estimates
 - `note_shares` allow unauthenticated read-only access to team notes (note_id=null) or one note
 - `estimates.quote_token` is a unique per-estimate token for the customer quote page
+- `estimates.completed_at` — null = active job, non-null = completed; status stays 'sold'
+- `schedule_blocks` — detail hour allocation per day per job; separate from `service_date` which is the primary start date
+- `training_completions` — unique on (item_id, employee_id); toggled by `useTrainingItems.toggleCompletion`
+- `crew_members` — join table (crew_id, employee_id); managed via `useCrews.setCrewMembers`
 - All tables have RLS enabled — test with different user sessions when debugging permission errors
 - Storage bucket name: `estimate-media`, path pattern: `{team_id}/{estimate_id}/{uuid}.ext`
 - RLS storage policy: `owner = auth.uid()` (owner column is uuid type)
+
+### EstimateInsert Pattern
+Adding optional DB columns to `Estimate` must follow this pattern to avoid breaking all callers:
+```typescript
+export type EstimateInsert = Omit<Estimate, 'id' | 'total_area' | ... | 'new_field'> & {
+  new_field?: string | null  // add back as optional
+}
+```
+Never add new columns directly to `Omit<Estimate, ...>` without also omitting them — they become required in the insert type.
+
+### Employee Portal — Job Visibility
+Employee sees a job if: `estimate.assigned_to === user.id` OR `estimate.crew_id` is in any of the employee's crew memberships. `completed_at !== null` moves jobs to a "Completed" section.
+
+### Complete Job — Profitability
+On "Mark Job Complete" the portal loads `time_entries` and `payments` for that estimate on-demand (direct Supabase query, not a hook). Labor cost = sum(hours × employee.pay_rate). Margin grades: ≥50% Excellent, ≥35% Good, ≥20% Tight, <20% Below Target.
 
 ## Environment Variables
 ```
@@ -214,12 +233,21 @@ EstiMate/
     │       ├── resources/page.tsx
     │       ├── help/page.tsx
     │       ├── team/page.tsx          ← alias → /settings/team
+    │       ├── jobs/page.tsx          ← My Jobs / By Crew / Unscheduled / All tabs
+    │       ├── portal/page.tsx        ← Employee portal: today's jobs, clock in/out, after photos, Complete Job profitability modal, training
+    │       ├── search/page.tsx        ← Global search across estimates, customers, notes, vendors
+    │       ├── recurring/page.tsx     ← Recurring jobs: Due/Upcoming/Paused, auto-generate estimates
+    │       ├── training/
+    │       │   ├── page.tsx           ← Module list, create module (title, description, public toggle)
+    │       │   └── [id]/page.tsx      ← Module detail: add items (checklist/text/video), per-employee completion tracking
     │       └── settings/
     │           ├── page.tsx           ← hub with 4 groups (Business, Operations, Insights, Tools)
     │           ├── company/page.tsx
     │           ├── team/page.tsx
     │           ├── billing/page.tsx   ← plan tiers (Free/Pro/Business) + Stripe portal
-    │           └── reminders/page.tsx ← days-before config, email/SMS toggle, custom message
+    │           ├── reminders/page.tsx ← days-before config, email/SMS toggle, custom message
+    │           ├── categories/page.tsx ← Service categories: color picker, name, soft-delete
+    │           └── crews/page.tsx     ← Crew list + member management modal
     ├── components/
     │   ├── ui/
     │   │   ├── Button.tsx            ← variants: primary/secondary/ghost/danger, sizes sm/md/lg
@@ -274,7 +302,7 @@ EstiMate/
         ├── hooks/
         │   ├── useAuth.ts
         │   ├── useTeam.ts
-        │   ├── useEstimates.ts
+        │   ├── useEstimates.ts       ← also exports updateEstimate(id, fields)
         │   ├── useEstimate.ts
         │   ├── useMedia.ts
         │   ├── useMeasurements.ts
@@ -284,15 +312,19 @@ EstiMate/
         │   ├── useLineItems.ts
         │   ├── useCompanySettings.ts
         │   ├── useEquipment.ts
-        │   ├── useEmployees.ts       ← also exports useTimeEntries
-        │   ├── useCRM.ts             ← useCustomers, useLeads, useContactLogs
+        │   ├── useEmployees.ts       ← also exports useTimeEntries(employeeId?)
+        │   ├── useCRM.ts             ← useCustomers, useLeads, useContactLogs; useCustomerEstimates(customerId)
         │   ├── useTemplates.ts
         │   ├── usePaymentLinks.ts
         │   ├── useRevenue.ts
         │   ├── useVendors.ts         ← vendor CRUD
         │   ├── useSubscription.ts    ← plan, status, trialDaysLeft
         │   ├── useNotifications.ts   ← in-app notifications, markRead
-        │   └── useReminderSettings.ts ← get/upsert reminder config
+        │   ├── useReminderSettings.ts ← get/upsert reminder config
+        │   ├── useRecurringJobs.ts   ← recurring jobs CRUD + advanceDate()
+        │   ├── useServiceCategories.ts ← service category CRUD (team-scoped)
+        │   ├── useCrews.ts           ← useCrews() + useScheduleBlocks(estimateId?)
+        │   └── useTraining.ts        ← useTraining() modules; useTrainingItems(moduleId) + toggleCompletion
         ├── utils/
         │   ├── status.ts
         │   ├── format.ts
@@ -367,11 +399,19 @@ EstiMate/
 | 018 | Subscriptions (SaaS billing) |
 | 019 | Quote tokens + reminder settings + reminder_log |
 | 020 | Notifications |
+| 021 | Recurring jobs (maintenance contracts, frequency enum, next_date) |
+| 022 | Service categories + category_id + estimated_hours on estimates |
+| 023 | Training modules, training_items, training_completions |
+| 024 | Crews, crew_members, schedule_blocks + crew_id on estimates |
+| 025 | completed_at on estimates (job completion tracking) |
 
 ## Known Issues / TODOs
 - SMS reminders: UI toggle exists, `send_sms` stored — actual Twilio integration not yet wired
-- Stripe webhooks for subscription lifecycle (invoice.paid, customer.subscription.updated) need a handler at `/api/billing/webhook`
+- Stripe webhooks for subscription lifecycle need handler at `/api/billing/webhook`
 - `estimates.customer_id` is NOT auto-set when Make Client is clicked (only creates CRM row)
 - Photo annotation export (flattened PNG thumbnail) is v2
 - Full offline sync is v2 — v1 caches app shell only
 - Magic link email requires SMTP configured in Supabase (Google OAuth works without it)
+- Schedule drag-and-drop (true drag to reorder) is v2 — current UX is date picker + block form
+- Employee time reports (per-employee summary export) not yet built
+- Stripe webhook for subscription lifecycle events not yet wired
