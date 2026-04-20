@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Clock, Plus, ChevronDown } from 'lucide-react'
+import { Clock, Plus, ChevronDown, Download } from 'lucide-react'
 import { useEmployees, useTimeEntries } from '@/lib/hooks/useEmployees'
 import { useEstimates } from '@/lib/hooks/useEstimates'
 import TopBar from '@/components/layout/TopBar'
@@ -42,6 +42,39 @@ export default function TimePage() {
   const filtered = filterEmp
     ? entries.filter(e => e.employee_id === filterEmp)
     : entries
+
+  function exportCSV() {
+    const rows = [
+      ['Date', 'Employee', 'Job / Customer', 'Hours', 'Break (min)', 'Pay Rate', 'Labor Cost', 'Notes'],
+    ]
+    for (const e of filtered) {
+      if (!e.clock_out) continue
+      const emp = empMap[e.employee_id]
+      const est = e.estimate_id ? estMap[e.estimate_id] : null
+      const ms = new Date(e.clock_out).getTime() - new Date(e.clock_in).getTime()
+      const hrs = Math.max(0, (ms / 3_600_000) - (e.break_mins / 60))
+      const payRate = emp?.pay_rate ?? 0
+      const laborCost = emp?.pay_type === 'hourly' ? hrs * payRate : 0
+      rows.push([
+        new Date(e.clock_in).toLocaleDateString('en-US'),
+        emp ? `${emp.first_name} ${emp.last_name}` : e.employee_id,
+        est ? est.customer_name : '',
+        hrs.toFixed(2),
+        String(e.break_mins),
+        payRate ? `$${payRate}` : '',
+        laborCost ? `$${laborCost.toFixed(2)}` : '',
+        e.notes ?? '',
+      ])
+    }
+    const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `time-report-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   const empMap = useMemo(() => Object.fromEntries(employees.map(e => [e.id, e])), [employees])
   const estMap = useMemo(() => Object.fromEntries(estimates.map(e => [e.id, e])), [estimates])
@@ -84,9 +117,16 @@ export default function TimePage() {
       <TopBar
         title="Time Tracking"
         right={
-          <button onClick={() => setModalOpen(true)} className="p-1.5 bg-blue-600 text-white rounded-lg active:bg-blue-700">
-            <Plus className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {filtered.some(e => e.clock_out) && (
+              <button onClick={exportCSV} className="p-1.5 text-gray-500 rounded-lg active:bg-gray-100" title="Export CSV">
+                <Download className="w-5 h-5" />
+              </button>
+            )}
+            <button onClick={() => setModalOpen(true)} className="p-1.5 bg-blue-600 text-white rounded-lg active:bg-blue-700">
+              <Plus className="w-5 h-5" />
+            </button>
+          </div>
         }
       />
 

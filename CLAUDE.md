@@ -84,7 +84,7 @@ Color map (in `src/lib/utils/status.ts`):
 - Plans: `free` | `pro` ($49/mo) | `business` ($149/mo)
 - Status: `trialing` (14-day default) | `active` | `past_due` | `canceled`
 - Billing portal: `POST /api/billing/portal` → Stripe Billing Portal or Checkout Session
-- Requires: `STRIPE_SECRET_KEY`, `STRIPE_PRO_PRICE_ID`, `NEXT_PUBLIC_APP_URL`
+- Requires: `STRIPE_SECRET_KEY`, `STRIPE_PRO_PRICE_ID`, `NEXT_PUBLIC_APP_URL`, `STRIPE_WEBHOOK_SECRET`
 - `useSubscription` hook: exposes `isProOrBusiness`, `isTrialing`, `trialDaysLeft`
 
 ### Database Key Points
@@ -126,6 +126,8 @@ RESEND_API_KEY=<resend api key>
 # Optional — enables Stripe billing
 STRIPE_SECRET_KEY=<stripe secret key>
 STRIPE_PRO_PRICE_ID=<stripe price id for Pro plan>
+STRIPE_BUSINESS_PRICE_ID=<stripe price id for Business plan>
+STRIPE_WEBHOOK_SECRET=<stripe webhook signing secret — from Stripe dashboard>
 NEXT_PUBLIC_APP_URL=https://esti-mate.vercel.app
 # Optional — secures cron endpoint
 CRON_SECRET=<random secret>
@@ -193,7 +195,8 @@ EstiMate/
     │   │   ├── reminders/
     │   │   │   └── send/route.ts     ← GET: cron job, sends day-before reminders
     │   │   └── billing/
-    │   │       └── portal/route.ts   ← POST: Stripe billing portal / checkout session
+    │   │       ├── portal/route.ts   ← POST: Stripe billing portal / checkout session
+    │   │       └── webhook/route.ts  ← POST: Stripe webhook (subscription lifecycle, invoice events)
     │   ├── quote/[token]/
     │   │   ├── page.tsx              ← public customer quote page (no auth)
     │   │   └── QuoteResponseClient.tsx ← Accept / Decline / Request Changes UI
@@ -407,11 +410,13 @@ EstiMate/
 
 ## Known Issues / TODOs
 - SMS reminders: UI toggle exists, `send_sms` stored — actual Twilio integration not yet wired
-- Stripe webhooks for subscription lifecycle need handler at `/api/billing/webhook`
-- `estimates.customer_id` is NOT auto-set when Make Client is clicked (only creates CRM row)
 - Photo annotation export (flattened PNG thumbnail) is v2
 - Full offline sync is v2 — v1 caches app shell only
 - Magic link email requires SMTP configured in Supabase (Google OAuth works without it)
 - Schedule drag-and-drop (true drag to reorder) is v2 — current UX is date picker + block form
-- Employee time reports (per-employee summary export) not yet built
-- Stripe webhook for subscription lifecycle events not yet wired
+- Stripe Business plan: add `STRIPE_BUSINESS_PRICE_ID` env var + upgrade flow in billing settings
+
+## Recently Completed
+- `estimates.customer_id` is written back to the estimate when Make Client is clicked (fixed in MakeClientButton)
+- Employee time reports: CSV export added to Time Tracking page (download button in top bar)
+- Stripe subscription lifecycle webhook: `POST /api/billing/webhook` handles checkout.session.completed, subscription.updated/deleted, invoice.payment_failed/succeeded — requires `STRIPE_WEBHOOK_SECRET` env var
