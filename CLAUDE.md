@@ -422,3 +422,4 @@ EstiMate/
 - Stripe Business plan checkout: `POST /api/billing/portal` now accepts `{ plan }` body param to route to the correct Stripe price ID; billing page passes plan on each upgrade button
 - Free tier 25-estimate limit: warning banner at 20+, red banner + grayed FAB at 25, upgrade wall on the new estimate page
 - Employee edit modal: pencil icon on each org-tree row opens a pre-filled edit modal (name, role, manager, phone, email, pay, hire date, notes)
+- Notification polling: `useNotifications` now polls every 30 seconds via `setInterval` so contractors see quote responses and other alerts without a page refresh; interval is cleared on unmount
