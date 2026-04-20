@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Check, Zap, Crown, Building2 } from 'lucide-react'
 import { useSubscription } from '@/lib/hooks/useSubscription'
 import TopBar from '@/components/layout/TopBar'
@@ -76,15 +77,22 @@ const PLANS = [
 
 export default function BillingPage() {
   const { subscription, loading, isProOrBusiness, isTrialing, trialDaysLeft } = useSubscription()
+  const [upgrading, setUpgrading] = useState<string | null>(null)
 
   if (loading) return <><TopBar title="Billing" backHref="/settings" /><div className="flex justify-center py-12"><Spinner size="lg" /></div></>
 
   const currentPlan = subscription?.plan ?? 'free'
 
-  async function openPortal() {
-    const res = await fetch('/api/billing/portal', { method: 'POST' })
+  async function openPortal(plan?: string) {
+    setUpgrading(plan ?? 'portal')
+    const res = await fetch('/api/billing/portal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan }),
+    })
     const { url } = await res.json()
     if (url) window.location.href = url
+    else setUpgrading(null)
   }
 
   return (
@@ -106,10 +114,11 @@ export default function BillingPage() {
             </div>
             {subscription?.stripe_subscription_id && (
               <button
-                onClick={openPortal}
-                className="text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-xl active:bg-blue-100"
+                onClick={() => openPortal()}
+                disabled={!!upgrading}
+                className="text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-xl active:bg-blue-100 disabled:opacity-50"
               >
-                Manage
+                {upgrading === 'portal' ? 'Loading…' : 'Manage'}
               </button>
             )}
           </div>
@@ -163,18 +172,25 @@ export default function BillingPage() {
                   <div className="w-full py-2.5 bg-gray-100 text-gray-500 text-sm font-semibold rounded-xl text-center">
                     Current Plan
                   </div>
+                ) : plan.id === 'free' ? (
+                  <button
+                    onClick={() => openPortal()}
+                    disabled={!!upgrading}
+                    className="w-full py-2.5 text-sm font-semibold rounded-xl bg-gray-100 text-gray-700 active:bg-gray-200 disabled:opacity-50"
+                  >
+                    {upgrading === plan.id ? 'Loading…' : 'Downgrade to Free'}
+                  </button>
                 ) : (
                   <button
-                    onClick={openPortal}
-                    className={`w-full py-2.5 text-sm font-semibold rounded-xl ${
+                    onClick={() => openPortal(plan.id)}
+                    disabled={!!upgrading}
+                    className={`w-full py-2.5 text-sm font-semibold rounded-xl disabled:opacity-50 ${
                       plan.id === 'pro'
                         ? 'bg-blue-600 text-white active:bg-blue-700'
-                        : plan.id === 'business'
-                        ? 'bg-violet-600 text-white active:bg-violet-700'
-                        : 'bg-gray-100 text-gray-700 active:bg-gray-200'
+                        : 'bg-violet-600 text-white active:bg-violet-700'
                     }`}
                   >
-                    {currentPlan === 'free' ? 'Upgrade' : 'Switch'} to {plan.name}
+                    {upgrading === plan.id ? 'Loading…' : `${currentPlan === 'free' ? 'Upgrade' : 'Switch'} to ${plan.name}`}
                   </button>
                 )}
               </div>

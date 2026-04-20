@@ -414,9 +414,11 @@ EstiMate/
 - Full offline sync is v2 — v1 caches app shell only
 - Magic link email requires SMTP configured in Supabase (Google OAuth works without it)
 - Schedule drag-and-drop (true drag to reorder) is v2 — current UX is date picker + block form
-- Stripe Business plan: add `STRIPE_BUSINESS_PRICE_ID` env var + upgrade flow in billing settings
 
 ## Recently Completed
 - `estimates.customer_id` is written back to the estimate when Make Client is clicked (fixed in MakeClientButton)
 - Employee time reports: CSV export added to Time Tracking page (download button in top bar)
 - Stripe subscription lifecycle webhook: `POST /api/billing/webhook` handles checkout.session.completed, subscription.updated/deleted, invoice.payment_failed/succeeded — requires `STRIPE_WEBHOOK_SECRET` env var
+- Stripe Business plan checkout: `POST /api/billing/portal` now accepts `{ plan }` body param to route to the correct Stripe price ID; billing page passes plan on each upgrade button
+- Free tier 25-estimate limit: warning banner at 20+, red banner + grayed FAB at 25, upgrade wall on the new estimate page
+- Employee edit modal: pencil icon on each org-tree row opens a pre-filled edit modal (name, role, manager, phone, email, pay, hire date, notes)

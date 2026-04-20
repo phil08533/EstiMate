@@ -74,8 +74,10 @@ Full-service field operations platform for landscaping and contracting businesse
 
 ### Employees
 - **Employee profiles** — name, role, pay rate (hourly/salary), hire date, manager
+- **Edit employees** — pencil icon on any org-tree row opens a pre-filled edit modal
 - **Org tree** — visual hierarchy of your team
 - **Time tracking** — clock in/out per job; log hours manually; team-wide time log
+- **Time report CSV** — download button exports visible time entries with hours and labor cost
 - **Crews** — named groups of employees; assign crews to jobs; crew member management
 
 ### Employee Portal (companion view)
@@ -142,7 +144,10 @@ Full-service field operations platform for landscaping and contracting businesse
 
 ### Subscription & Billing
 - **Free / Pro / Business tiers** — 14-day free trial for all new accounts
+- **Free tier limit** — 25-estimate cap with a warning banner at 20+, hard block at 25, and upgrade prompt on creation
 - **Stripe billing portal** — upgrade, downgrade, or manage payment method in-app
+- **Business plan checkout** — upgrade button routes directly to the correct Stripe price ID for Pro or Business
+- **Subscription webhook** — `POST /api/billing/webhook` keeps plan/status in sync with Stripe lifecycle events
 
 ### PWA
 - **Install on phone** — add to home screen, runs full-screen like a native app

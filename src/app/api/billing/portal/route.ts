@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 
-export async function POST() {
+export async function POST(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -10,6 +10,13 @@ export async function POST() {
   if (!stripeKey) {
     return NextResponse.json({ error: 'Stripe not configured' }, { status: 503 })
   }
+
+  // Optional: caller can specify which plan to check out for
+  let targetPlan: string | null = null
+  try {
+    const body = await req.json()
+    targetPlan = body?.plan ?? null
+  } catch { /* no body is fine */ }
 
   const service = await createServiceClient()
   const { data: member } = await service
@@ -22,7 +29,7 @@ export async function POST() {
   const returnUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://esti-mate.vercel.app'}/settings/billing`
 
   if (sub?.stripe_customer_id) {
-    // Existing Stripe customer — open billing portal
+    // Existing Stripe customer — open billing portal (they can switch plans there)
     const res = await fetch('https://api.stripe.com/v1/billing_portal/sessions', {
       method: 'POST',
       headers: {
@@ -34,8 +41,11 @@ export async function POST() {
     const session = await res.json()
     return NextResponse.json({ url: session.url })
   } else {
-    // No Stripe customer yet — direct to checkout for Pro plan
-    const priceId = process.env.STRIPE_PRO_PRICE_ID
+    // No Stripe customer yet — create checkout for the requested plan
+    const priceId =
+      targetPlan === 'business'
+        ? (process.env.STRIPE_BUSINESS_PRICE_ID ?? process.env.STRIPE_PRO_PRICE_ID)
+        : process.env.STRIPE_PRO_PRICE_ID
     if (!priceId) return NextResponse.json({ url: returnUrl })
 
     const { data: profile } = await service
