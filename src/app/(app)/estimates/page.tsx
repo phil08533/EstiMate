@@ -1,14 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Plus } from 'lucide-react'
+import { Plus, AlertTriangle } from 'lucide-react'
 import { useEstimates } from '@/lib/hooks/useEstimates'
+import { useSubscription } from '@/lib/hooks/useSubscription'
+import { createClient } from '@/lib/supabase/client'
 import EstimateCard from '@/components/estimates/EstimateCard'
 import EstimateFiltersBar from '@/components/estimates/EstimateFilters'
 import Spinner from '@/components/ui/Spinner'
 import PageHelp from '@/components/ui/PageHelp'
 import type { EstimateFilters } from '@/lib/types'
+
+const FREE_LIMIT = 25
 
 const DEFAULT_FILTERS: EstimateFilters = {
   status: 'all',
@@ -20,6 +24,27 @@ const DEFAULT_FILTERS: EstimateFilters = {
 export default function EstimatesPage() {
   const [filters, setFilters] = useState<EstimateFilters>(DEFAULT_FILTERS)
   const { estimates, loading } = useEstimates(filters)
+  const { subscription } = useSubscription()
+  const [totalCount, setTotalCount] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (subscription?.plan !== 'free') return
+    async function fetchCount() {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data: member } = await supabase
+        .from('team_members').select('team_id').eq('user_id', user.id).limit(1).single()
+      if (!member) return
+      const { count } = await supabase
+        .from('estimates').select('id', { count: 'exact', head: true }).eq('team_id', member.team_id)
+      setTotalCount(count ?? 0)
+    }
+    fetchCount()
+  }, [subscription?.plan])
+
+  const isAtLimit = subscription?.plan === 'free' && totalCount !== null && totalCount >= FREE_LIMIT
+  const isNearLimit = subscription?.plan === 'free' && totalCount !== null && totalCount >= 20 && totalCount < FREE_LIMIT
 
   return (
     <div className="min-h-screen">
@@ -30,6 +55,24 @@ export default function EstimatesPage() {
           <EstimateFiltersBar filters={filters} onChange={setFilters} />
         </div>
       </div>
+
+      {/* Free tier banner */}
+      {(isAtLimit || isNearLimit) && (
+        <div className={`mx-4 mt-3 rounded-xl px-4 py-3 flex items-start gap-3 ${isAtLimit ? 'bg-red-50 border border-red-200' : 'bg-amber-50 border border-amber-200'}`}>
+          <AlertTriangle className={`w-4 h-4 flex-shrink-0 mt-0.5 ${isAtLimit ? 'text-red-500' : 'text-amber-500'}`} />
+          <div className="flex-1 min-w-0">
+            <p className={`text-sm font-semibold ${isAtLimit ? 'text-red-700' : 'text-amber-700'}`}>
+              {isAtLimit ? `Free limit reached (${totalCount}/${FREE_LIMIT})` : `${totalCount}/${FREE_LIMIT} free estimates used`}
+            </p>
+            <p className={`text-xs mt-0.5 ${isAtLimit ? 'text-red-600' : 'text-amber-600'}`}>
+              {isAtLimit ? 'Upgrade to Pro for unlimited estimates.' : 'Upgrade to Pro before you run out.'}
+            </p>
+          </div>
+          <Link href="/settings/billing" className={`text-xs font-bold flex-shrink-0 ${isAtLimit ? 'text-red-600' : 'text-amber-600'}`}>
+            Upgrade
+          </Link>
+        </div>
+      )}
 
       {/* List */}
       <div className="p-4 space-y-3">
@@ -68,9 +111,11 @@ export default function EstimatesPage() {
 
       {/* FAB */}
       <Link
-        href="/estimates/new"
-        className="fixed bottom-24 right-4 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center active:bg-blue-700 transition-colors z-30"
-        aria-label="New estimate"
+        href={isAtLimit ? '/settings/billing' : '/estimates/new'}
+        className={`fixed bottom-24 right-4 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-colors z-30 ${
+          isAtLimit ? 'bg-gray-400 text-white' : 'bg-blue-600 text-white active:bg-blue-700'
+        }`}
+        aria-label={isAtLimit ? 'Upgrade to add more estimates' : 'New estimate'}
       >
         <Plus className="w-7 h-7" />
       </Link>

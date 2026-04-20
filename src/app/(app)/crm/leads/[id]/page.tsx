@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { Phone, Mail, MapPin, Plus, Trash2, ArrowRight, UserCheck } from 'lucide-react'
+import { Phone, Mail, MapPin, Plus, Trash2, ArrowRight, UserCheck, ClipboardList } from 'lucide-react'
 import { useLeads, useContactLogs } from '@/lib/hooks/useCRM'
+import { useEstimates } from '@/lib/hooks/useEstimates'
 import { useRouter } from 'next/navigation'
 import TopBar from '@/components/layout/TopBar'
 import Spinner from '@/components/ui/Spinner'
@@ -29,10 +30,12 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
   const { id } = params
   const { leads, loading, moveLead, updateLead, convertToCustomer, deleteLead } = useLeads()
   const { logs, loading: logsLoading, addLog, deleteLog } = useContactLogs(undefined, id)
+  const { createEstimate } = useEstimates()
   const router = useRouter()
   const [logType, setLogType] = useState<ContactLogType>('call')
   const [logText, setLogText] = useState('')
   const [adding, setAdding] = useState(false)
+  const [creatingEst, setCreatingEst] = useState(false)
 
   const lead = leads.find(l => l.id === id)
 
@@ -42,6 +45,25 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
   async function handleConvert() {
     const customer = await convertToCustomer(lead!)
     if (customer) router.replace(`/crm/customers/${customer.id}`)
+  }
+
+  async function handleCreateEstimate() {
+    setCreatingEst(true)
+    const est = await createEstimate({
+      customer_name: lead!.full_name,
+      customer_phone: lead!.phone ?? null,
+      customer_email: lead!.email ?? null,
+      customer_address: lead!.address ?? null,
+      comments: lead!.service_interest ?? null,
+      status: 'need_to_estimate',
+      assigned_to: null,
+      follow_up_date: null,
+      service_date: null,
+      customer_id: null,
+    })
+    // Advance lead stage to estimate_scheduled
+    await moveLead(id, 'estimate_scheduled')
+    router.push(`/estimates/${est.id}`)
   }
 
   async function handleDelete() {
@@ -121,12 +143,18 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
               </button>
             ))}
           </div>
-          {lead.stage !== 'won' && (
-            <Button onClick={handleConvert} className="mt-3 w-full" variant="secondary">
-              <UserCheck className="w-4 h-4 mr-2" />
-              Convert to Client
+          <div className="mt-3 flex flex-col gap-2">
+            <Button onClick={handleCreateEstimate} loading={creatingEst} className="w-full">
+              <ClipboardList className="w-4 h-4 mr-2" />
+              Create Estimate
             </Button>
-          )}
+            {lead.stage !== 'won' && (
+              <Button onClick={handleConvert} className="w-full" variant="secondary">
+                <UserCheck className="w-4 h-4 mr-2" />
+                Convert to Client
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Follow-up date */}

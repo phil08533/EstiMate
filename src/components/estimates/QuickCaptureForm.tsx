@@ -1,17 +1,41 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Lock } from 'lucide-react'
 import { useEstimates } from '@/lib/hooks/useEstimates'
+import { useSubscription } from '@/lib/hooks/useSubscription'
+import { createClient } from '@/lib/supabase/client'
 import Input from '@/components/ui/Input'
 import Textarea from '@/components/ui/Textarea'
 import Button from '@/components/ui/Button'
 
+const FREE_LIMIT = 25
+
 export default function QuickCaptureForm() {
   const router = useRouter()
   const { createEstimate } = useEstimates()
+  const { subscription, loading: subLoading } = useSubscription()
+  const [estimateCount, setEstimateCount] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    async function fetchCount() {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data: member } = await supabase
+        .from('team_members').select('team_id').eq('user_id', user.id).limit(1).single()
+      if (!member) return
+      const { count } = await supabase
+        .from('estimates').select('id', { count: 'exact', head: true }).eq('team_id', member.team_id)
+      setEstimateCount(count ?? 0)
+    }
+    fetchCount()
+  }, [])
+
+  const isLimited = !subLoading && subscription?.plan === 'free' && estimateCount !== null && estimateCount >= FREE_LIMIT
 
   const [form, setForm] = useState({
     customer_name: '',
@@ -49,6 +73,36 @@ export default function QuickCaptureForm() {
       setError(err instanceof Error ? err.message : 'Failed to save')
       setLoading(false)
     }
+  }
+
+  if (isLimited) {
+    return (
+      <div className="p-6 flex flex-col items-center text-center gap-4 pt-16">
+        <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center">
+          <Lock className="w-8 h-8 text-amber-600" />
+        </div>
+        <div>
+          <p className="text-lg font-bold text-gray-900">Free plan limit reached</p>
+          <p className="text-sm text-gray-500 mt-1">
+            You&apos;ve used all {FREE_LIMIT} estimates on the Free plan.<br />
+            Upgrade to Pro for unlimited estimates.
+          </p>
+        </div>
+        <Button
+          onClick={() => router.push('/settings/billing')}
+          size="lg"
+          className="w-full max-w-xs"
+        >
+          Upgrade to Pro
+        </Button>
+        <button
+          onClick={() => router.back()}
+          className="text-sm text-gray-400 underline"
+        >
+          Go back
+        </button>
+      </div>
+    )
   }
 
   return (

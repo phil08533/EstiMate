@@ -4,10 +4,10 @@ import { useState, useMemo, useRef } from 'react'
 import {
   ClipboardList, Camera, CheckCircle, MapPin,
   Play, Square, ChevronDown, BookOpen, ChevronRight, Users,
-  TrendingUp, DollarSign, Award, X, CheckCircle2,
+  TrendingUp, DollarSign, Award, X, CheckCircle2, LogOut,
 } from 'lucide-react'
 import Link from 'next/link'
-import TopBar from '@/components/layout/TopBar'
+import { useRouter } from 'next/navigation'
 import Spinner from '@/components/ui/Spinner'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { useEmployees, useTimeEntries } from '@/lib/hooks/useEmployees'
@@ -73,7 +73,7 @@ function AfterPhotoUploader({ estimateId }: { estimateId: string }) {
   )
 }
 
-// ─── Job card with clock in/out + complete ─────────────────────────────────────
+// ─── Job card ──────────────────────────────────────────────────────────────────
 function JobCard({ job, activeEntry, onClockIn, onClockOut, onComplete, isCompleted }: {
   job: Estimate
   activeEntry: { id: string; estimate_id: string | null } | null
@@ -131,7 +131,6 @@ function JobCard({ job, activeEntry, onClockIn, onClockOut, onComplete, isComple
 
           {!isCompleted && (
             <>
-              {/* Clock in/out */}
               <div>
                 <p className="text-xs font-semibold text-gray-500 mb-2">Time</p>
                 {isClockedIn ? (
@@ -154,13 +153,11 @@ function JobCard({ job, activeEntry, onClockIn, onClockOut, onComplete, isComple
                 )}
               </div>
 
-              {/* After photos */}
               <div>
                 <p className="text-xs font-semibold text-gray-500 mb-2">After photos</p>
                 <AfterPhotoUploader estimateId={job.id} />
               </div>
 
-              {/* Complete job */}
               <button
                 onClick={() => onComplete(job)}
                 className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 text-white font-semibold rounded-xl active:bg-blue-700"
@@ -184,7 +181,7 @@ function JobCard({ job, activeEntry, onClockIn, onClockOut, onComplete, isComple
   )
 }
 
-// ─── Profitability grade helper ────────────────────────────────────────────────
+// ─── Profitability grade ───────────────────────────────────────────────────────
 function profitGrade(margin: number) {
   if (margin >= 50) return { label: 'Excellent', color: 'text-green-700', bg: 'bg-green-50', border: 'border-green-200' }
   if (margin >= 35) return { label: 'Good', color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200' }
@@ -200,9 +197,10 @@ interface JobStats {
   margin: number
 }
 
-// ─── Main portal page ──────────────────────────────────────────────────────────
+// ─── Portal page ───────────────────────────────────────────────────────────────
 export default function PortalPage() {
-  const { user, profile } = useAuth()
+  const { user, profile, signOut } = useAuth()
+  const router = useRouter()
   const { employees, loading: empLoading } = useEmployees()
   const { estimates, loading: estLoading, updateEstimate } = useEstimates()
   const { crews, crewMembers, loading: crewLoad } = useCrews()
@@ -297,10 +295,10 @@ export default function PortalPage() {
     setJobStats(null)
   }
 
-  const loading = empLoading || estLoading || crewLoad
-  if (loading) return <><TopBar title="My Portal" /><div className="flex justify-center py-12"><Spinner size="lg" /></div></>
-
-  const firstName = profile?.full_name?.split(' ')[0] ?? 'there'
+  async function handleSignOut() {
+    await signOut()
+    router.replace('/login')
+  }
 
   function getCrewName(crewId: string | null) {
     if (!crewId) return null
@@ -311,153 +309,167 @@ export default function PortalPage() {
     return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
   }
 
+  const loading = empLoading || estLoading || crewLoad
+  const firstName = profile?.full_name?.split(' ')[0] ?? 'there'
+
   return (
     <>
-      <TopBar title="My Portal" />
-      <div className="pb-28">
-
-        {/* Welcome + status bar */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-5 text-white">
-          <p className="text-blue-200 text-sm">Welcome back,</p>
-          <p className="text-xl font-bold">{firstName}</p>
-          {myEmployee && (
-            <p className="text-blue-200 text-sm mt-0.5 capitalize">{myEmployee.role.replace('_', ' ')}</p>
-          )}
-          {activeEntry && (
-            <div className="mt-3 bg-white/20 rounded-xl px-3 py-2 flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-green-300 animate-pulse flex-shrink-0" />
-              <p className="text-sm font-semibold">
-                Clocked in since {new Date(activeEntry.clock_in).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-              </p>
-            </div>
-          )}
-          {!myEmployee && (
-            <div className="mt-3 bg-white/20 rounded-xl px-3 py-2">
-              <p className="text-sm text-blue-100">No employee profile linked. Ask your manager to link your account.</p>
-            </div>
-          )}
-        </div>
-
-        {/* Tabs */}
-        <div className="flex border-b border-gray-200 bg-white">
-          {([
-            ['today', `Today${todayJobs.length > 0 ? ` (${todayJobs.length})` : ''}`],
-            ['upcoming', `Upcoming${upcomingJobs.length > 0 ? ` (${upcomingJobs.length})` : ''}`],
-            ['training', `Training${publicModules.length > 0 ? ` (${publicModules.length})` : ''}`],
-          ] as ['today' | 'upcoming' | 'training', string][]).map(([t, label]) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`flex-1 py-3 text-xs font-semibold transition-colors ${tab === t ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-gray-500'}`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
-        <div className="p-4 space-y-3">
-          {/* ── TODAY ── */}
-          {tab === 'today' && (
-            <>
-              {todayJobs.length === 0 && unscheduledJobs.length === 0 && completedJobs.length === 0 && (
-                <div className="text-center py-12">
-                  <CheckCircle className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-                  <p className="text-gray-500 font-medium">No jobs scheduled for today</p>
-                  <p className="text-gray-400 text-sm mt-1">Check the Upcoming tab for future work</p>
-                </div>
-              )}
-
-              {todayJobs.map(job => (
-                <JobCard key={job.id} job={job} activeEntry={activeEntry}
-                  onClockIn={handleClockIn} onClockOut={handleClockOut} onComplete={openCompleteModal} />
-              ))}
-
-              {unscheduledJobs.length > 0 && (
-                <>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1 pt-2">Unscheduled</p>
-                  {unscheduledJobs.map(job => (
-                    <JobCard key={job.id} job={job} activeEntry={activeEntry}
-                      onClockIn={handleClockIn} onClockOut={handleClockOut} onComplete={openCompleteModal} />
-                  ))}
-                </>
-              )}
-
-              {completedJobs.length > 0 && (
-                <>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1 pt-2">Completed</p>
-                  {completedJobs.map(job => (
-                    <JobCard key={job.id} job={job} activeEntry={activeEntry}
-                      onClockIn={handleClockIn} onClockOut={handleClockOut} onComplete={openCompleteModal} isCompleted />
-                  ))}
-                </>
-              )}
-            </>
-          )}
-
-          {/* ── UPCOMING ── */}
-          {tab === 'upcoming' && (
-            <>
-              {upcomingJobs.length === 0 && (
-                <div className="text-center py-12">
-                  <ClipboardList className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-                  <p className="text-gray-500 font-medium">No upcoming scheduled jobs</p>
-                </div>
-              )}
-              {upcomingJobs.map(job => (
-                <JobCard key={job.id} job={job} activeEntry={activeEntry}
-                  onClockIn={handleClockIn} onClockOut={handleClockOut} onComplete={openCompleteModal} />
-              ))}
-            </>
-          )}
-
-          {/* ── TRAINING ── */}
-          {tab === 'training' && (
-            <>
-              {publicModules.length === 0 && (
-                <div className="text-center py-12">
-                  <BookOpen className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-                  <p className="text-gray-500 font-medium">No training available yet</p>
-                  <p className="text-gray-400 text-sm mt-1">Your manager will post guides here</p>
-                </div>
-              )}
-              {publicModules.length > 0 && (
-                <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-                  {publicModules.map((mod, i) => (
-                    <Link
-                      key={mod.id}
-                      href={`/training/${mod.id}`}
-                      className={`flex items-center gap-3 px-4 py-3.5 active:bg-gray-50 ${i < publicModules.length - 1 ? 'border-b border-gray-100' : ''}`}
-                    >
-                      <div className="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
-                        <BookOpen className="w-4 h-4 text-blue-600" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 text-sm truncate">{mod.title}</p>
-                        {mod.description && <p className="text-xs text-gray-400 truncate">{mod.description}</p>}
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-gray-300" />
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-
-          {/* My crew info */}
-          {myCrewIds.length > 0 && (
-            <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 flex items-center gap-2">
-              <Users className="w-4 h-4 text-gray-400 flex-shrink-0" />
-              <p className="text-xs text-gray-500">
-                Your crew{myCrewIds.length > 1 ? 's' : ''}: <span className="font-semibold text-gray-700">
-                  {myCrewIds.map(id => getCrewName(id)).filter(Boolean).join(', ')}
-                </span>
-              </p>
-            </div>
-          )}
-        </div>
+      {/* Standalone top bar — no nav links */}
+      <div className="sticky top-0 z-30 bg-white border-b border-gray-100 flex items-center justify-between px-4 h-14">
+        <span className="font-bold text-gray-900 text-base">EstiMate</span>
+        <button
+          onClick={handleSignOut}
+          className="flex items-center gap-1.5 text-sm text-gray-500 active:text-red-500 px-2 py-1.5 rounded-lg active:bg-red-50"
+        >
+          <LogOut className="w-4 h-4" />
+          Sign out
+        </button>
       </div>
 
-      {/* ── Complete Job Modal ── */}
+      {loading ? (
+        <div className="flex justify-center py-16"><Spinner size="lg" /></div>
+      ) : (
+        <div className="pb-10">
+
+          {/* Welcome hero */}
+          <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-5 text-white">
+            <p className="text-blue-200 text-sm">Welcome back,</p>
+            <p className="text-xl font-bold">{firstName}</p>
+            {myEmployee && (
+              <p className="text-blue-200 text-sm mt-0.5 capitalize">{myEmployee.role.replace('_', ' ')}</p>
+            )}
+            {activeEntry && (
+              <div className="mt-3 bg-white/20 rounded-xl px-3 py-2 flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-green-300 animate-pulse flex-shrink-0" />
+                <p className="text-sm font-semibold">
+                  Clocked in since {new Date(activeEntry.clock_in).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                </p>
+              </div>
+            )}
+            {!myEmployee && (
+              <div className="mt-3 bg-white/20 rounded-xl px-3 py-2">
+                <p className="text-sm text-blue-100">No employee profile linked. Ask your manager to link your account.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Tabs */}
+          <div className="flex border-b border-gray-200 bg-white">
+            {([
+              ['today', `Today${todayJobs.length > 0 ? ` (${todayJobs.length})` : ''}`],
+              ['upcoming', `Upcoming${upcomingJobs.length > 0 ? ` (${upcomingJobs.length})` : ''}`],
+              ['training', `Training${publicModules.length > 0 ? ` (${publicModules.length})` : ''}`],
+            ] as ['today' | 'upcoming' | 'training', string][]).map(([t, label]) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`flex-1 py-3 text-xs font-semibold transition-colors ${tab === t ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-gray-500'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <div className="p-4 space-y-3">
+            {/* TODAY */}
+            {tab === 'today' && (
+              <>
+                {todayJobs.length === 0 && unscheduledJobs.length === 0 && completedJobs.length === 0 && (
+                  <div className="text-center py-12">
+                    <CheckCircle className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+                    <p className="text-gray-500 font-medium">No jobs scheduled for today</p>
+                    <p className="text-gray-400 text-sm mt-1">Check the Upcoming tab for future work</p>
+                  </div>
+                )}
+                {todayJobs.map(job => (
+                  <JobCard key={job.id} job={job} activeEntry={activeEntry}
+                    onClockIn={handleClockIn} onClockOut={handleClockOut} onComplete={openCompleteModal} />
+                ))}
+                {unscheduledJobs.length > 0 && (
+                  <>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1 pt-2">Unscheduled</p>
+                    {unscheduledJobs.map(job => (
+                      <JobCard key={job.id} job={job} activeEntry={activeEntry}
+                        onClockIn={handleClockIn} onClockOut={handleClockOut} onComplete={openCompleteModal} />
+                    ))}
+                  </>
+                )}
+                {completedJobs.length > 0 && (
+                  <>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1 pt-2">Completed</p>
+                    {completedJobs.map(job => (
+                      <JobCard key={job.id} job={job} activeEntry={activeEntry}
+                        onClockIn={handleClockIn} onClockOut={handleClockOut} onComplete={openCompleteModal} isCompleted />
+                    ))}
+                  </>
+                )}
+              </>
+            )}
+
+            {/* UPCOMING */}
+            {tab === 'upcoming' && (
+              <>
+                {upcomingJobs.length === 0 && (
+                  <div className="text-center py-12">
+                    <ClipboardList className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+                    <p className="text-gray-500 font-medium">No upcoming scheduled jobs</p>
+                  </div>
+                )}
+                {upcomingJobs.map(job => (
+                  <JobCard key={job.id} job={job} activeEntry={activeEntry}
+                    onClockIn={handleClockIn} onClockOut={handleClockOut} onComplete={openCompleteModal} />
+                ))}
+              </>
+            )}
+
+            {/* TRAINING */}
+            {tab === 'training' && (
+              <>
+                {publicModules.length === 0 && (
+                  <div className="text-center py-12">
+                    <BookOpen className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+                    <p className="text-gray-500 font-medium">No training available yet</p>
+                    <p className="text-gray-400 text-sm mt-1">Your manager will post guides here</p>
+                  </div>
+                )}
+                {publicModules.length > 0 && (
+                  <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+                    {publicModules.map((mod, i) => (
+                      <Link
+                        key={mod.id}
+                        href={`/training/${mod.id}`}
+                        className={`flex items-center gap-3 px-4 py-3.5 active:bg-gray-50 ${i < publicModules.length - 1 ? 'border-b border-gray-100' : ''}`}
+                      >
+                        <div className="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
+                          <BookOpen className="w-4 h-4 text-blue-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-900 text-sm truncate">{mod.title}</p>
+                          {mod.description && <p className="text-xs text-gray-400 truncate">{mod.description}</p>}
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-gray-300" />
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {myCrewIds.length > 0 && (
+              <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 flex items-center gap-2">
+                <Users className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                <p className="text-xs text-gray-500">
+                  Your crew{myCrewIds.length > 1 ? 's' : ''}: <span className="font-semibold text-gray-700">
+                    {myCrewIds.map(cid => getCrewName(cid)).filter(Boolean).join(', ')}
+                  </span>
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Complete Job Modal */}
       {completingJob && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end" onClick={() => !completing && setCompletingJob(null)}>
           <div className="bg-white w-full rounded-t-3xl p-5 space-y-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
@@ -471,13 +483,10 @@ export default function PortalPage() {
               </button>
             </div>
 
-            {statsLoading && (
-              <div className="flex justify-center py-8"><Spinner size="lg" /></div>
-            )}
+            {statsLoading && <div className="flex justify-center py-8"><Spinner size="lg" /></div>}
 
             {!statsLoading && jobStats && (
               <>
-                {/* Profitability grade */}
                 {jobStats.revenue > 0 ? (() => {
                   const grade = profitGrade(jobStats.margin)
                   return (
@@ -502,7 +511,6 @@ export default function PortalPage() {
                   </div>
                 )}
 
-                {/* Stats breakdown */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-green-50 rounded-xl p-3">
                     <TrendingUp className="w-4 h-4 text-green-600 mb-1" />

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Phone, Mail, MapPin, Plus, Trash2, ClipboardList, ChevronRight } from 'lucide-react'
 import { useCustomers, useContactLogs } from '@/lib/hooks/useCRM'
 import { useCustomerEstimates } from '@/lib/hooks/useCustomerEstimates'
+import { useEstimates } from '@/lib/hooks/useEstimates'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import TopBar from '@/components/layout/TopBar'
@@ -25,11 +26,13 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
   const { customers, loading, updateCustomer, deleteCustomer } = useCustomers()
   const { logs, loading: logsLoading, addLog, deleteLog } = useContactLogs(id)
   const { estimates: jobHistory, loading: jobsLoading } = useCustomerEstimates(id)
+  const { createEstimate } = useEstimates()
   const router = useRouter()
   const [logType, setLogType] = useState<ContactLogType>('call')
   const [logText, setLogText] = useState('')
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState(false)
+  const [creatingEst, setCreatingEst] = useState(false)
   const [editName, setEditName] = useState('')
   const [editPhone, setEditPhone] = useState('')
   const [editEmail, setEditEmail] = useState('')
@@ -63,6 +66,23 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
     if (!confirm('Delete this client?')) return
     await deleteCustomer(id)
     router.replace('/crm')
+  }
+
+  async function handleCreateEstimate() {
+    setCreatingEst(true)
+    const est = await createEstimate({
+      customer_name: customer!.full_name,
+      customer_phone: customer!.phone ?? null,
+      customer_email: customer!.email ?? null,
+      customer_address: customer!.address ?? null,
+      comments: customer!.notes ?? null,
+      status: 'need_to_estimate',
+      assigned_to: null,
+      follow_up_date: null,
+      service_date: null,
+      customer_id: id,
+    })
+    router.push(`/estimates/${est.id}`)
   }
 
   async function handleAddLog(e: React.FormEvent) {
@@ -146,13 +166,20 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
         <div>
           <div className="flex items-center justify-between px-1 mb-2">
             <h3 className="font-semibold text-gray-900">Job History</h3>
-            <span className="text-xs text-gray-400">{jobHistory.length} job{jobHistory.length !== 1 ? 's' : ''}</span>
+            <button
+              onClick={handleCreateEstimate}
+              disabled={creatingEst}
+              className="flex items-center gap-1 text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-200 px-2.5 py-1.5 rounded-lg active:bg-blue-100 disabled:opacity-50"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              {creatingEst ? 'Creating…' : 'New Estimate'}
+            </button>
           </div>
           {jobHistory.length === 0 ? (
             <div className="bg-white border border-gray-200 rounded-2xl p-6 text-center">
               <ClipboardList className="w-8 h-8 text-gray-300 mx-auto mb-2" />
               <p className="text-sm text-gray-400">No linked estimates yet</p>
-              <p className="text-xs text-gray-400 mt-1">Use &ldquo;Make Client&rdquo; on an estimate to link it here</p>
+              <p className="text-xs text-gray-400 mt-1">Tap &ldquo;New Estimate&rdquo; above to create one for this client</p>
             </div>
           ) : (
             <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">

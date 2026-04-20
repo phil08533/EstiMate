@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, ChevronDown, ChevronRight, Phone, Mail, Trash2 } from 'lucide-react'
+import { Plus, ChevronDown, ChevronRight, Phone, Mail, Trash2, Pencil } from 'lucide-react'
 import { useEmployees } from '@/lib/hooks/useEmployees'
 import TopBar from '@/components/layout/TopBar'
 import Spinner from '@/components/ui/Spinner'
@@ -26,10 +26,11 @@ function roleCfg(r: EmployeeRole) {
 
 type EmployeeWithChildren = Employee & { children: Employee[] }
 
-function EmployeeNode({ emp, depth = 0, onDelete }: {
+function EmployeeNode({ emp, depth = 0, onDelete, onEdit }: {
   emp: EmployeeWithChildren
   depth?: number
   onDelete: (id: string) => void
+  onEdit: (emp: Employee) => void
 }) {
   const [open, setOpen] = useState(depth < 2)
   const cfg = roleCfg(emp.role)
@@ -78,6 +79,9 @@ function EmployeeNode({ emp, depth = 0, onDelete }: {
               <Mail className="w-3.5 h-3.5" />
             </a>
           )}
+          <button onClick={() => onEdit(emp)} className="p-1.5 text-gray-400 active:text-blue-500">
+            <Pencil className="w-3.5 h-3.5" />
+          </button>
           <button onClick={() => onDelete(emp.id)} className="p-1.5 text-gray-300 active:text-red-400">
             <Trash2 className="w-3.5 h-3.5" />
           </button>
@@ -87,7 +91,7 @@ function EmployeeNode({ emp, depth = 0, onDelete }: {
       {open && hasChildren && (
         <div>
           {(emp.children as EmployeeWithChildren[]).map(child => (
-            <EmployeeNode key={child.id} emp={child} depth={depth + 1} onDelete={onDelete} />
+            <EmployeeNode key={child.id} emp={child} depth={depth + 1} onDelete={onDelete} onEdit={onEdit} />
           ))}
         </div>
       )}
@@ -96,7 +100,7 @@ function EmployeeNode({ emp, depth = 0, onDelete }: {
 }
 
 export default function EmployeesPage() {
-  const { employees, loading, addEmployee, deactivateEmployee, buildTree } = useEmployees()
+  const { employees, loading, addEmployee, updateEmployee, deactivateEmployee, buildTree } = useEmployees()
   const [showAdd, setShowAdd] = useState(false)
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
@@ -108,6 +112,54 @@ export default function EmployeesPage() {
   const [payType, setPayType] = useState<PayType>('hourly')
   const [hireDate, setHireDate] = useState('')
   const [saving, setSaving] = useState(false)
+
+  // Edit state
+  const [editEmp, setEditEmp] = useState<Employee | null>(null)
+  const [editFirst, setEditFirst] = useState('')
+  const [editLast, setEditLast] = useState('')
+  const [editRole, setEditRole] = useState<EmployeeRole>('crew_member')
+  const [editManagerId, setEditManagerId] = useState('')
+  const [editPhone, setEditPhone] = useState('')
+  const [editEmail, setEditEmail] = useState('')
+  const [editPayRate, setEditPayRate] = useState('')
+  const [editPayType, setEditPayType] = useState<PayType>('hourly')
+  const [editHireDate, setEditHireDate] = useState('')
+  const [editNotes, setEditNotes] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
+
+  function openEdit(emp: Employee) {
+    setEditEmp(emp)
+    setEditFirst(emp.first_name)
+    setEditLast(emp.last_name)
+    setEditRole(emp.role)
+    setEditManagerId(emp.manager_id ?? '')
+    setEditPhone(emp.phone ?? '')
+    setEditEmail(emp.email ?? '')
+    setEditPayRate(emp.pay_rate ? String(emp.pay_rate) : '')
+    setEditPayType(emp.pay_type ?? 'hourly')
+    setEditHireDate(emp.hire_date ?? '')
+    setEditNotes(emp.notes ?? '')
+  }
+
+  async function handleEdit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editEmp || !editFirst.trim() || !editLast.trim()) return
+    setEditSaving(true)
+    await updateEmployee(editEmp.id, {
+      first_name: editFirst.trim(),
+      last_name: editLast.trim(),
+      role: editRole,
+      manager_id: editManagerId || null,
+      phone: editPhone || null,
+      email: editEmail || null,
+      pay_rate: editPayRate ? parseFloat(editPayRate) : null,
+      pay_type: editPayType,
+      hire_date: editHireDate || null,
+      notes: editNotes || null,
+    })
+    setEditSaving(false)
+    setEditEmp(null)
+  }
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault()
@@ -175,7 +227,7 @@ export default function EmployeesPage() {
 
         {/* Org tree */}
         {tree.map(emp => (
-          <EmployeeNode key={emp.id} emp={emp} onDelete={id => deactivateEmployee(id)} />
+          <EmployeeNode key={emp.id} emp={emp} onDelete={id => deactivateEmployee(id)} onEdit={openEdit} />
         ))}
       </div>
 
@@ -197,6 +249,73 @@ export default function EmployeesPage() {
           ]}
         />
       </div>
+
+      {/* Edit Employee Modal */}
+      <Modal open={!!editEmp} onClose={() => setEditEmp(null)} title="Edit Employee">
+        <form onSubmit={handleEdit} className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <input value={editFirst} onChange={e => setEditFirst(e.target.value)} placeholder="First name *" autoFocus
+              className="px-3 py-2.5 rounded-xl border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+            <input value={editLast} onChange={e => setEditLast(e.target.value)} placeholder="Last name *"
+              className="px-3 py-2.5 rounded-xl border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-gray-500 mb-1 block">Role</label>
+            <div className="flex flex-wrap gap-2">
+              {ROLES.map(r => (
+                <button key={r.value} type="button" onClick={() => setEditRole(r.value)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                    editRole === r.value ? 'bg-blue-600 text-white border-blue-600' : `${r.color} border-transparent`
+                  }`}>
+                  {r.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {employees.filter(e => e.id !== editEmp?.id).length > 0 && (
+            <div>
+              <label className="text-xs font-medium text-gray-500 mb-1 block">Reports to</label>
+              <select value={editManagerId} onChange={e => setEditManagerId(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">No manager (top level)</option>
+                {employees.filter(e => e.id !== editEmp?.id).map(e => (
+                  <option key={e.id} value={e.id}>{e.first_name} {e.last_name} — {roleCfg(e.role).label}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-2">
+            <input value={editPhone} onChange={e => setEditPhone(e.target.value)} placeholder="Phone"
+              className="px-3 py-2.5 rounded-xl border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+            <input value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder="Email"
+              className="px-3 py-2.5 rounded-xl border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <input value={editPayRate} onChange={e => setEditPayRate(e.target.value)} type="number" placeholder="Pay rate"
+              className="px-3 py-2.5 rounded-xl border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+            <select value={editPayType} onChange={e => setEditPayType(e.target.value as PayType)}
+              className="px-3 py-2.5 rounded-xl border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="hourly">Hourly</option>
+              <option value="salary">Salary</option>
+            </select>
+          </div>
+
+          <input value={editHireDate} onChange={e => setEditHireDate(e.target.value)} type="date"
+            className="w-full px-3 py-2.5 rounded-xl border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+
+          <textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} placeholder="Notes"
+            rows={2}
+            className="w-full px-3 py-2.5 rounded-xl border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+
+          <Button type="submit" loading={editSaving} className="w-full" disabled={!editFirst.trim() || !editLast.trim()}>
+            Save changes
+          </Button>
+        </form>
+      </Modal>
 
       <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Add Employee">
         <form onSubmit={handleAdd} className="space-y-3">

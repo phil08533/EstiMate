@@ -84,7 +84,7 @@ Color map (in `src/lib/utils/status.ts`):
 - Plans: `free` | `pro` ($49/mo) | `business` ($149/mo)
 - Status: `trialing` (14-day default) | `active` | `past_due` | `canceled`
 - Billing portal: `POST /api/billing/portal` → Stripe Billing Portal or Checkout Session
-- Requires: `STRIPE_SECRET_KEY`, `STRIPE_PRO_PRICE_ID`, `NEXT_PUBLIC_APP_URL`
+- Requires: `STRIPE_SECRET_KEY`, `STRIPE_PRO_PRICE_ID`, `NEXT_PUBLIC_APP_URL`, `STRIPE_WEBHOOK_SECRET`
 - `useSubscription` hook: exposes `isProOrBusiness`, `isTrialing`, `trialDaysLeft`
 
 ### Database Key Points
@@ -126,6 +126,8 @@ RESEND_API_KEY=<resend api key>
 # Optional — enables Stripe billing
 STRIPE_SECRET_KEY=<stripe secret key>
 STRIPE_PRO_PRICE_ID=<stripe price id for Pro plan>
+STRIPE_BUSINESS_PRICE_ID=<stripe price id for Business plan>
+STRIPE_WEBHOOK_SECRET=<stripe webhook signing secret — from Stripe dashboard>
 NEXT_PUBLIC_APP_URL=https://esti-mate.vercel.app
 # Optional — secures cron endpoint
 CRON_SECRET=<random secret>
@@ -193,13 +195,17 @@ EstiMate/
     │   │   ├── reminders/
     │   │   │   └── send/route.ts     ← GET: cron job, sends day-before reminders
     │   │   └── billing/
-    │   │       └── portal/route.ts   ← POST: Stripe billing portal / checkout session
+    │   │       ├── portal/route.ts   ← POST: Stripe billing portal / checkout session
+    │   │       └── webhook/route.ts  ← POST: Stripe webhook (subscription lifecycle, invoice events)
     │   ├── quote/[token]/
     │   │   ├── page.tsx              ← public customer quote page (no auth)
     │   │   └── QuoteResponseClient.tsx ← Accept / Decline / Request Changes UI
     │   ├── shared/
     │   │   ├── [token]/page.tsx
     │   │   └── notes/[token]/page.tsx
+    │   ├── portal/
+    │   │   ├── layout.tsx             ← Standalone auth layout (no SideNav/BottomNav, Sign Out button)
+    │   │   └── page.tsx               ← Employee portal: today's jobs, clock in/out, after photos, Complete Job modal, training
     │   ├── pay/[token]/
     │   │   ├── page.tsx
     │   │   └── PaymentClient.tsx
@@ -234,7 +240,7 @@ EstiMate/
     │       ├── help/page.tsx
     │       ├── team/page.tsx          ← alias → /settings/team
     │       ├── jobs/page.tsx          ← My Jobs / By Crew / Unscheduled / All tabs
-    │       ├── portal/page.tsx        ← Employee portal: today's jobs, clock in/out, after photos, Complete Job profitability modal, training
+    │       ├── portal/  ← REMOVED — moved to standalone route below
     │       ├── search/page.tsx        ← Global search across estimates, customers, notes, vendors
     │       ├── recurring/page.tsx     ← Recurring jobs: Due/Upcoming/Paused, auto-generate estimates
     │       ├── training/
@@ -407,11 +413,18 @@ EstiMate/
 
 ## Known Issues / TODOs
 - SMS reminders: UI toggle exists, `send_sms` stored — actual Twilio integration not yet wired
-- Stripe webhooks for subscription lifecycle need handler at `/api/billing/webhook`
-- `estimates.customer_id` is NOT auto-set when Make Client is clicked (only creates CRM row)
 - Photo annotation export (flattened PNG thumbnail) is v2
 - Full offline sync is v2 — v1 caches app shell only
 - Magic link email requires SMTP configured in Supabase (Google OAuth works without it)
 - Schedule drag-and-drop (true drag to reorder) is v2 — current UX is date picker + block form
-- Employee time reports (per-employee summary export) not yet built
-- Stripe webhook for subscription lifecycle events not yet wired
+
+## Recently Completed
+- `estimates.customer_id` is written back to the estimate when Make Client is clicked (fixed in MakeClientButton)
+- Employee time reports: CSV export added to Time Tracking page (download button in top bar)
+- Stripe subscription lifecycle webhook: `POST /api/billing/webhook` handles checkout.session.completed, subscription.updated/deleted, invoice.payment_failed/succeeded — requires `STRIPE_WEBHOOK_SECRET` env var
+- Stripe Business plan checkout: `POST /api/billing/portal` now accepts `{ plan }` body param to route to the correct Stripe price ID; billing page passes plan on each upgrade button
+- Free tier 25-estimate limit: warning banner at 20+, red banner + grayed FAB at 25, upgrade wall on the new estimate page
+- Employee edit modal: pencil icon on each org-tree row opens a pre-filled edit modal (name, role, manager, phone, email, pay, hire date, notes)
+- Notification polling: `useNotifications` now polls every 30 seconds via `setInterval` so contractors see quote responses and other alerts without a page refresh; interval is cleared on unmount
+- Create Estimate from CRM: lead detail has a "Create Estimate" button (pre-fills contact info, advances stage to estimate_scheduled); customer detail has a "New Estimate" button in Job History (pre-fills contact info, sets customer_id)
+- Employee portal moved to standalone `/portal` route (own layout, no SideNav/BottomNav, Sign Out button in top bar)
