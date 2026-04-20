@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Phone, Mail, MapPin, Plus, Trash2, ClipboardList, ChevronRight } from 'lucide-react'
+import { Phone, Mail, MapPin, Plus, Trash2, ClipboardList, ChevronRight, Link2, Check } from 'lucide-react'
 import { useCustomers, useContactLogs } from '@/lib/hooks/useCRM'
 import { useCustomerEstimates } from '@/lib/hooks/useCustomerEstimates'
 import { useEstimates } from '@/lib/hooks/useEstimates'
@@ -33,6 +33,15 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState(false)
   const [creatingEst, setCreatingEst] = useState(false)
+  const [copiedPortal, setCopiedPortal] = useState(false)
+
+  function copyPortalLink() {
+    if (!customer?.portal_token) return
+    const url = `${window.location.origin}/customer/${customer.portal_token}`
+    navigator.clipboard.writeText(url)
+    setCopiedPortal(true)
+    setTimeout(() => setCopiedPortal(false), 2500)
+  }
   const [editName, setEditName] = useState('')
   const [editPhone, setEditPhone] = useState('')
   const [editEmail, setEditEmail] = useState('')
@@ -159,6 +168,15 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
               </p>
             )}
             {customer.notes && <p className="text-sm text-gray-600 bg-gray-50 rounded-xl p-3">{customer.notes}</p>}
+            {customer.portal_token && (
+              <button
+                onClick={copyPortalLink}
+                className="w-full flex items-center justify-center gap-2 py-2 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 active:bg-gray-50"
+              >
+                {copiedPortal ? <Check className="w-4 h-4 text-green-600" /> : <Link2 className="w-4 h-4" />}
+                {copiedPortal ? 'Portal link copied!' : 'Copy customer portal link'}
+              </button>
+            )}
           </div>
         )}
 

@@ -1,21 +1,22 @@
 'use client'
 
 import { useState } from 'react'
-import { Calculator, ChevronDown } from 'lucide-react'
+import { Calculator, ChevronDown, ClipboardList, Check, X } from 'lucide-react'
 import TopBar from '@/components/layout/TopBar'
+import { useEstimates } from '@/lib/hooks/useEstimates'
+import { createClient } from '@/lib/supabase/client'
 
 type Material = 'mulch' | 'rock' | 'topsoil' | 'sand' | 'sod' | 'seed' | 'gravel'
 
 interface MaterialConfig {
   label: string
-  unit: string           // what depth/coverage is measured in
+  unit: string
   depthLabel: string
   defaultDepth: number
-  // conversion helpers
-  bagSizeCuFt?: number   // cu ft per bag (mulch, soil, sand)
-  sqFtPerPallet?: number // for sod
-  lbsPerKSqFt?: number   // for seed
-  tonPerCuYd?: number    // for rock/gravel
+  bagSizeCuFt?: number
+  sqFtPerPallet?: number
+  lbsPerKSqFt?: number
+  tonPerCuYd?: number
   avgPricePerUnit: number
   priceUnit: string
 }
@@ -32,22 +33,31 @@ const MATERIALS: Record<Material, MaterialConfig> = {
 
 function calcResults(material: Material, sqFt: number, depth: number, price: number) {
   const cfg = MATERIALS[material]
-
   if (material === 'sod') {
-    const pallets = Math.ceil(sqFt / (cfg.sqFtPerPallet!))
+    const pallets = Math.ceil(sqFt / cfg.sqFtPerPallet!)
     return { pallets, sqFt, totalCost: pallets * price }
   }
   if (material === 'seed') {
-    const lbs = Math.ceil((sqFt / 1000) * (cfg.lbsPerKSqFt!))
+    const lbs = Math.ceil((sqFt / 1000) * cfg.lbsPerKSqFt!)
     return { lbs, sqFt, totalCost: lbs * price }
   }
-
-  const cuFt = (sqFt * (depth / 12)) * 1.1  // 10% waste factor
+  const cuFt = (sqFt * (depth / 12)) * 1.1
   const cuYd = cuFt / 27
   const bags = cfg.bagSizeCuFt ? Math.ceil(cuFt / cfg.bagSizeCuFt) : null
-  const tons = cfg.tonPerCuYd ? (cuYd * cfg.tonPerCuYd) : null
+  const tons = cfg.tonPerCuYd ? cuYd * cfg.tonPerCuYd : null
   const totalCost = tons ? tons * price : cuYd * price
   return { cuFt, cuYd, bags, tons, sqFt, totalCost }
+}
+
+function buildLineItemDesc(material: Material, results: ReturnType<typeof calcResults>, numDepth: number) {
+  const label = MATERIALS[material].label
+  if (material === 'sod' && 'pallets' in results) return `${label} — ${'pallets' in results ? results.pallets : ''} pallets (${results.sqFt} sq ft)`
+  if (material === 'seed' && 'lbs' in results) return `${label} — ${'lbs' in results ? results.lbs : ''} lbs (${results.sqFt} sq ft)`
+  if ('cuYd' in results) {
+    const qty = results.cuYd !== undefined ? `${results.cuYd.toFixed(1)} cu yd` : ''
+    return `${label} — ${qty} @ ${numDepth}" depth (${results.sqFt} sq ft)`
+  }
+  return label
 }
 
 export default function CalculatorPage() {
@@ -55,13 +65,52 @@ export default function CalculatorPage() {
   const [sqFt, setSqFt] = useState('')
   const [depth, setDepth] = useState('')
   const [price, setPrice] = useState('')
-  const cfg = MATERIALS[material]
+  const [showAddPanel, setShowAddPanel] = useState(false)
+  const [selectedEstimateId, setSelectedEstimateId] = useState('')
+  const [adding, setAdding] = useState(false)
+  const [added, setAdded] = useState(false)
+  const { estimates } = useEstimates()
 
+  const cfg = MATERIALS[material]
   const numSqFt = parseFloat(sqFt) || 0
   const numDepth = parseFloat(depth) || cfg.defaultDepth
   const numPrice = parseFloat(price) || cfg.avgPricePerUnit
-
   const results = numSqFt > 0 ? calcResults(material, numSqFt, numDepth, numPrice) : null
+
+  // Sort estimates: open jobs first, then by name
+  const openEstimates = estimates.filter(e => !e.completed_at).sort((a, b) => a.customer_name.localeCompare(b.customer_name))
+
+  async function handleAddToEstimate() {
+    if (!selectedEstimateId || !results) return
+    setAdding(true)
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data: membership } = await supabase
+        .from('team_members').select('team_id').eq('user_id', user.id).limit(1).single()
+      const { data: existing } = await supabase
+        .from('estimate_line_items').select('id').eq('estimate_id', selectedEstimateId).order('sort_order', { ascending: false }).limit(1).single()
+      const sort_order = existing ? 999 : 0
+      await supabase.from('estimate_line_items').insert({
+        estimate_id: selectedEstimateId,
+        team_id: membership?.team_id,
+        description: buildLineItemDesc(material, results, numDepth),
+        quantity: 1,
+        unit_price: Math.round(results.totalCost * 100) / 100,
+        unit: 'lot',
+        tax_exempt: false,
+        service_item_id: null,
+        sort_order,
+        category: 'material',
+        created_by: user.id,
+      })
+      setAdded(true)
+      setTimeout(() => { setAdded(false); setShowAddPanel(false) }, 2000)
+    } finally {
+      setAdding(false)
+    }
+  }
 
   function fmt(n: number, dec = 1) { return n.toLocaleString('en-US', { maximumFractionDigits: dec }) }
   function fmtMoney(n: number) { return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }) }
@@ -99,9 +148,7 @@ export default function CalculatorPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-              Area (sq ft)
-            </label>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Area (sq ft)</label>
             <input
               type="number"
               value={sqFt}
@@ -113,9 +160,7 @@ export default function CalculatorPage() {
 
           {cfg.depthLabel && (
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-                {cfg.depthLabel}
-              </label>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">{cfg.depthLabel}</label>
               <input
                 type="number"
                 value={depth}
@@ -127,9 +172,7 @@ export default function CalculatorPage() {
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-              Your price ({cfg.priceUnit})
-            </label>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Your price ({cfg.priceUnit})</label>
             <input
               type="number"
               value={price}
@@ -147,21 +190,18 @@ export default function CalculatorPage() {
               <p className="text-white font-semibold">Results for {fmt(numSqFt, 0)} sq ft</p>
             </div>
             <div className="p-4 space-y-3">
-
               {material === 'sod' && 'pallets' in results && (
                 <>
                   <ResultRow label="Pallets needed" value={`${results.pallets} pallets`} highlight />
                   <ResultRow label="Area" value={`${fmt(results.sqFt, 0)} sq ft`} />
                 </>
               )}
-
               {material === 'seed' && 'lbs' in results && (
                 <>
                   <ResultRow label="Seed needed" value={`${results.lbs} lbs`} highlight />
                   <ResultRow label="Area" value={`${fmt(results.sqFt, 0)} sq ft`} />
                 </>
               )}
-
               {'cuYd' in results && results.cuYd !== undefined && (
                 <>
                   <ResultRow label="Cubic yards" value={`${fmt(results.cuYd)} cu yd`} highlight />
@@ -175,11 +215,53 @@ export default function CalculatorPage() {
                   <ResultRow label="Waste factor" value="10% included" />
                 </>
               )}
-
               <div className="border-t border-gray-100 pt-3">
                 <ResultRow label="Estimated material cost" value={fmtMoney(results.totalCost)} highlight accent />
               </div>
             </div>
+
+            {/* Add to estimate */}
+            {!showAddPanel ? (
+              <div className="px-4 pb-4">
+                <button
+                  onClick={() => { setShowAddPanel(true); setAdded(false) }}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl active:bg-blue-700"
+                >
+                  <ClipboardList className="w-4 h-4" />
+                  Add to Estimate
+                </button>
+              </div>
+            ) : (
+              <div className="px-4 pb-4 space-y-3 border-t border-gray-100 pt-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-gray-700">Add to which estimate?</p>
+                  <button onClick={() => setShowAddPanel(false)} className="p-1 text-gray-400">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="relative">
+                  <select
+                    value={selectedEstimateId}
+                    onChange={e => setSelectedEstimateId(e.target.value)}
+                    className="w-full appearance-none border border-gray-200 rounded-xl px-4 py-3 text-gray-900 bg-white pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  >
+                    <option value="">Select estimate…</option>
+                    {openEstimates.map(e => (
+                      <option key={e.id} value={e.id}>{e.customer_name}{e.customer_address ? ` — ${e.customer_address}` : ''}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                </div>
+                <button
+                  onClick={handleAddToEstimate}
+                  disabled={!selectedEstimateId || adding || added}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-green-600 text-white text-sm font-semibold rounded-xl active:bg-green-700 disabled:opacity-60"
+                >
+                  {added ? <Check className="w-4 h-4" /> : <ClipboardList className="w-4 h-4" />}
+                  {added ? 'Added!' : adding ? 'Adding…' : 'Confirm'}
+                </button>
+              </div>
+            )}
           </div>
         )}
 

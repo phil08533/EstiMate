@@ -39,6 +39,7 @@ export default function EstimateDetailPage({ params }: { params: { id: string } 
         tax_exempt: false,
         service_item_id: null,
         sort_order: lineItems.length + i,
+        category: 'other',
       })
     }
     setTab('quote')

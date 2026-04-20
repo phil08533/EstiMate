@@ -11,8 +11,8 @@ Full-service field operations platform for landscaping and contracting businesse
 ### Estimates & Quoting
 - **Quick capture** — large touch-friendly form: customer name, phone, email, address, notes
 - **Status workflow** — Need to Estimate → Sent → Sold / Lost (reopen from Lost)
-- **Line items** — add materials, labor, and services with quantities and unit prices
-- **Service catalog** — save reusable items with default prices for one-tap quoting
+- **LMN-style estimate builder** — tabbed catalog drawer (Labor / Equipment / Material / Subs / Other) lets you add employees, equipment, and catalog items in one tap; line items grouped by category with per-category subtotals
+- **Service catalog** — save reusable items per category; add to catalog and estimate simultaneously from the drawer
 - **Tax calculation** — apply company default tax rate; mark items tax-exempt individually
 - **Service categories** — assign user-defined work types (Mowing, Landscaping, Lighting, Snow) to track by category in analytics
 - **Assign & crew** — assign estimates to team members or named crews; filter lists by assignee
@@ -55,7 +55,8 @@ Full-service field operations platform for landscaping and contracting businesse
 
 ### CRM Pipeline
 - **Leads board** — kanban-style pipeline: New → Contacted → Quoted → Won / Lost
-- **Customers** — full customer profiles with contact info, notes, and job history
+- **Customers** — full customer profiles with contact info, notes, and job history; "Copy customer portal link" gives a no-login view of their estimate history
+- **Customer portal** — public `/customer/[token]` page for customers to see their active and completed jobs without logging in
 - **Contact log** — log calls, emails, visits per lead or customer
 - **Import from CSV** — import contacts from LMN, Service Autopilot, or any generic CSV with duplicate detection
 
@@ -84,6 +85,7 @@ Full-service field operations platform for landscaping and contracting businesse
 - **My jobs** — see today's jobs, upcoming jobs, and unscheduled work assigned to you or your crew
 - **Clock in/out** — one-tap clock in and out per job from the portal
 - **After photos** — camera-capture after photos directly on a job card
+- **Field notes** — add text notes per job from the portal; visible to managers on the estimate detail
 - **Complete Job** — mark a job done with instant profitability summary (revenue, labor cost, margin %)
 - **Training** — view and check off training modules published by managers
 
@@ -120,6 +122,7 @@ Full-service field operations platform for landscaping and contracting businesse
 - **Status** — Active / In Maintenance / Retired
 - **Activity log** — maintenance, repair, fuel, and note entries
 - **Total cost tracking** — cumulative logged costs per equipment item
+- **Equipment scheduling** — Schedule tab shows a weekly view of equipment assignments; assign any piece of equipment to a job for a specific date and see conflicts at a glance
 
 ### Notes
 - **Daily notes** — opens today's note automatically; title + freeform text with autosave
@@ -131,6 +134,7 @@ Full-service field operations platform for landscaping and contracting businesse
 
 ### Material Calculator
 - **Mulch, rock, soil, sod, seed** — enter dimensions + coverage rate; calculates cubic yards and cost
+- **Add to estimate** — push calculated material cost directly to any open estimate as a line item (category: Material)
 
 ### Advertising
 - **Social post ideas** — seasonal content calendar for landscaping businesses
@@ -185,6 +189,10 @@ Run all migrations **in order** via Supabase Dashboard → SQL Editor:
 | `023_training.sql` | Training modules, items, and per-employee completions |
 | `024_crews.sql` | Crews, crew_members, schedule_blocks + crew_id on estimates |
 | `025_job_completion.sql` | completed_at timestamp on estimates |
+| `026_line_item_categories.sql` | category column on estimate_line_items (labor/equipment/material/subs/other) |
+| `027_job_notes.sql` | job_notes table — employee field notes per estimate |
+| `028_equipment_assignments.sql` | equipment_assignments — schedule equipment to jobs by date |
+| `029_customer_portal.sql` | portal_token on customers — unique token for public customer portal |
 
 ---
 
