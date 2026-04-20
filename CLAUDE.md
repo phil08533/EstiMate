@@ -176,7 +176,8 @@ EstiMate/
 │   ├── 017_vendors.sql              ← vendors (supplier contacts)
 │   ├── 018_subscriptions.sql        ← subscriptions (SaaS billing), auto-created on team insert
 │   ├── 019_quote_and_reminders.sql  ← estimates.quote_token + customer_response cols, reminder_settings, reminder_log
-│   └── 020_notifications.sql        ← notifications (in-app)
+│   ├── 020_notifications.sql        ← notifications (in-app)
+│   └── 026_line_item_categories.sql ← adds category TEXT column to estimate_line_items (labor/equipment/material/subs/other)
 └── src/
     ├── middleware.ts                 ← session refresh; public paths: /login /auth/callback /shared /pay /quote /api/quote
     ├── app/
@@ -410,6 +411,7 @@ EstiMate/
 | 023 | Training modules, training_items, training_completions |
 | 024 | Crews, crew_members, schedule_blocks + crew_id on estimates |
 | 025 | completed_at on estimates (job completion tracking) |
+| 026 | category column on estimate_line_items (labor/equipment/material/subs/other) |
 
 ## Known Issues / TODOs
 - SMS reminders: UI toggle exists, `send_sms` stored — actual Twilio integration not yet wired
@@ -419,6 +421,7 @@ EstiMate/
 - Schedule drag-and-drop (true drag to reorder) is v2 — current UX is date picker + block form
 
 ## Recently Completed
+- LMN-style estimate builder: `LineItemsSection` fully rewritten with categorized line items (Labor/Equipment/Material/Subs/Other), a tabbed catalog drawer bottom sheet, employee/equipment integration, per-category subtotals, and a collapsible totals block. Migration `026_line_item_categories.sql` adds `category` column to `estimate_line_items`. Run migration in Supabase dashboard.
 - `estimates.customer_id` is written back to the estimate when Make Client is clicked (fixed in MakeClientButton)
 - Employee time reports: CSV export added to Time Tracking page (download button in top bar)
 - Stripe subscription lifecycle webhook: `POST /api/billing/webhook` handles checkout.session.completed, subscription.updated/deleted, invoice.payment_failed/succeeded — requires `STRIPE_WEBHOOK_SECRET` env var

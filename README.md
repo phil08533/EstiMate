@@ -11,8 +11,8 @@ Full-service field operations platform for landscaping and contracting businesse
 ### Estimates & Quoting
 - **Quick capture** — large touch-friendly form: customer name, phone, email, address, notes
 - **Status workflow** — Need to Estimate → Sent → Sold / Lost (reopen from Lost)
-- **Line items** — add materials, labor, and services with quantities and unit prices
-- **Service catalog** — save reusable items with default prices for one-tap quoting
+- **LMN-style estimate builder** — tabbed catalog drawer (Labor / Equipment / Material / Subs / Other) lets you add employees, equipment, and catalog items in one tap; line items grouped by category with per-category subtotals
+- **Service catalog** — save reusable items per category; add to catalog and estimate simultaneously from the drawer
 - **Tax calculation** — apply company default tax rate; mark items tax-exempt individually
 - **Service categories** — assign user-defined work types (Mowing, Landscaping, Lighting, Snow) to track by category in analytics
 - **Assign & crew** — assign estimates to team members or named crews; filter lists by assignee
@@ -185,6 +185,7 @@ Run all migrations **in order** via Supabase Dashboard → SQL Editor:
 | `023_training.sql` | Training modules, items, and per-employee completions |
 | `024_crews.sql` | Crews, crew_members, schedule_blocks + crew_id on estimates |
 | `025_job_completion.sql` | completed_at timestamp on estimates |
+| `026_line_item_categories.sql` | category column on estimate_line_items (labor/equipment/material/subs/other) |
 
 ---
 

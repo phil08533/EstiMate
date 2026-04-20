@@ -225,6 +225,8 @@ export interface ServiceItem {
 }
 export type ServiceItemInsert = Omit<ServiceItem, 'id' | 'created_at'>
 
+export type LineItemCategory = 'labor' | 'equipment' | 'material' | 'subs' | 'other'
+
 export interface EstimateLineItem {
   id: string
   estimate_id: string
@@ -235,6 +237,7 @@ export interface EstimateLineItem {
   unit: string
   tax_exempt: boolean
   sort_order: number
+  category: LineItemCategory
   created_at: string
 }
 export type EstimateLineItemInsert = Omit<EstimateLineItem, 'id' | 'created_at'>
