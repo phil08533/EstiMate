@@ -80,10 +80,11 @@ export interface Estimate {
   customer_response: CustomerResponse | null
   customer_response_at: string | null
   customer_response_notes: string | null
+  completed_at: string | null
   created_at: string
   updated_at: string
 }
-export type EstimateInsert = Omit<Estimate, 'id' | 'total_area' | 'created_at' | 'updated_at' | 'quote_token' | 'customer_response' | 'customer_response_at' | 'customer_response_notes' | 'category_id' | 'crew_id' | 'estimated_hours' | 'recurring_job_id'> & {
+export type EstimateInsert = Omit<Estimate, 'id' | 'total_area' | 'created_at' | 'updated_at' | 'quote_token' | 'customer_response' | 'customer_response_at' | 'customer_response_notes' | 'category_id' | 'crew_id' | 'estimated_hours' | 'recurring_job_id' | 'completed_at'> & {
   quote_token?: string | null
   customer_response?: CustomerResponse | null
   customer_response_at?: string | null
@@ -92,6 +93,7 @@ export type EstimateInsert = Omit<Estimate, 'id' | 'total_area' | 'created_at' |
   crew_id?: string | null
   estimated_hours?: number | null
   recurring_job_id?: string | null
+  completed_at?: string | null
 }
 
 // Estimate with joined profile data

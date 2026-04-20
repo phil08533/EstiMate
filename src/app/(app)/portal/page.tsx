@@ -4,6 +4,7 @@ import { useState, useMemo, useRef } from 'react'
 import {
   ClipboardList, Camera, CheckCircle, MapPin,
   Play, Square, ChevronDown, BookOpen, ChevronRight, Users,
+  TrendingUp, DollarSign, Award, X, CheckCircle2,
 } from 'lucide-react'
 import Link from 'next/link'
 import TopBar from '@/components/layout/TopBar'
@@ -15,7 +16,8 @@ import { useCrews } from '@/lib/hooks/useCrews'
 import { useMedia } from '@/lib/hooks/useMedia'
 import { useTraining } from '@/lib/hooks/useTraining'
 import { useTeam } from '@/lib/hooks/useTeam'
-import type { Estimate } from '@/lib/types'
+import { createClient } from '@/lib/supabase/client'
+import type { Estimate, Employee } from '@/lib/types'
 
 // ─── Mini after-photo uploader ─────────────────────────────────────────────────
 function AfterPhotoUploader({ estimateId }: { estimateId: string }) {
@@ -71,12 +73,14 @@ function AfterPhotoUploader({ estimateId }: { estimateId: string }) {
   )
 }
 
-// ─── Job card with clock in/out ────────────────────────────────────────────────
-function JobCard({ job, activeEntry, onClockIn, onClockOut }: {
+// ─── Job card with clock in/out + complete ─────────────────────────────────────
+function JobCard({ job, activeEntry, onClockIn, onClockOut, onComplete, isCompleted }: {
   job: Estimate
   activeEntry: { id: string; estimate_id: string | null } | null
   onClockIn: (estimateId: string) => void
   onClockOut: (entryId: string) => void
+  onComplete: (job: Estimate) => void
+  isCompleted?: boolean
 }) {
   const [expanded, setExpanded] = useState(false)
   const isClockedIn = activeEntry?.estimate_id === job.id
@@ -84,16 +88,21 @@ function JobCard({ job, activeEntry, onClockIn, onClockOut }: {
   const isToday = job.service_date === today
 
   return (
-    <div className={`bg-white border rounded-2xl overflow-hidden ${isClockedIn ? 'border-green-400' : 'border-gray-200'}`}>
+    <div className={`bg-white border rounded-2xl overflow-hidden ${
+      isCompleted ? 'border-green-300 opacity-75' : isClockedIn ? 'border-green-400' : 'border-gray-200'
+    }`}>
       <button
         onClick={() => setExpanded(e => !e)}
         className="w-full flex items-start gap-3 px-4 py-4 text-left"
       >
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isClockedIn ? 'bg-green-500' : isToday ? 'bg-blue-500' : 'bg-gray-300'}`} />
+            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+              isCompleted ? 'bg-green-500' : isClockedIn ? 'bg-green-500' : isToday ? 'bg-blue-500' : 'bg-gray-300'
+            }`} />
             <p className="font-semibold text-gray-900 text-sm truncate">{job.customer_name}</p>
-            {isClockedIn && <span className="text-xs font-medium text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full flex-shrink-0">Clocked in</span>}
+            {isCompleted && <span className="text-xs font-medium text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full flex-shrink-0">Done</span>}
+            {isClockedIn && !isCompleted && <span className="text-xs font-medium text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full flex-shrink-0">Clocked in</span>}
           </div>
           {job.customer_address && (
             <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1 ml-4">
@@ -120,34 +129,47 @@ function JobCard({ job, activeEntry, onClockIn, onClockOut }: {
             </div>
           )}
 
-          {/* Clock in/out */}
-          <div>
-            <p className="text-xs font-semibold text-gray-500 mb-2">Time</p>
-            {isClockedIn ? (
-              <button
-                onClick={() => onClockOut(activeEntry!.id)}
-                className="w-full flex items-center justify-center gap-2 py-3 bg-red-600 text-white font-semibold rounded-xl active:bg-red-700"
-              >
-                <Square className="w-4 h-4" />
-                Clock Out
-              </button>
-            ) : (
-              <button
-                onClick={() => onClockIn(job.id)}
-                disabled={!!activeEntry}
-                className="w-full flex items-center justify-center gap-2 py-3 bg-green-600 text-white font-semibold rounded-xl active:bg-green-700 disabled:opacity-50"
-              >
-                <Play className="w-4 h-4" />
-                {activeEntry ? 'Clock out of other job first' : 'Clock In'}
-              </button>
-            )}
-          </div>
+          {!isCompleted && (
+            <>
+              {/* Clock in/out */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 mb-2">Time</p>
+                {isClockedIn ? (
+                  <button
+                    onClick={() => onClockOut(activeEntry!.id)}
+                    className="w-full flex items-center justify-center gap-2 py-3 bg-red-600 text-white font-semibold rounded-xl active:bg-red-700"
+                  >
+                    <Square className="w-4 h-4" />
+                    Clock Out
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => onClockIn(job.id)}
+                    disabled={!!activeEntry}
+                    className="w-full flex items-center justify-center gap-2 py-3 bg-green-600 text-white font-semibold rounded-xl active:bg-green-700 disabled:opacity-50"
+                  >
+                    <Play className="w-4 h-4" />
+                    {activeEntry ? 'Clock out of other job first' : 'Clock In'}
+                  </button>
+                )}
+              </div>
 
-          {/* After photos */}
-          <div>
-            <p className="text-xs font-semibold text-gray-500 mb-2">After photos</p>
-            <AfterPhotoUploader estimateId={job.id} />
-          </div>
+              {/* After photos */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 mb-2">After photos</p>
+                <AfterPhotoUploader estimateId={job.id} />
+              </div>
+
+              {/* Complete job */}
+              <button
+                onClick={() => onComplete(job)}
+                className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 text-white font-semibold rounded-xl active:bg-blue-700"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                Mark Job Complete
+              </button>
+            </>
+          )}
 
           <Link
             href={`/estimates/${job.id}`}
@@ -162,14 +184,34 @@ function JobCard({ job, activeEntry, onClockIn, onClockOut }: {
   )
 }
 
+// ─── Profitability grade helper ────────────────────────────────────────────────
+function profitGrade(margin: number) {
+  if (margin >= 50) return { label: 'Excellent', color: 'text-green-700', bg: 'bg-green-50', border: 'border-green-200' }
+  if (margin >= 35) return { label: 'Good', color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200' }
+  if (margin >= 20) return { label: 'Tight', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200' }
+  return { label: 'Below Target', color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200' }
+}
+
+interface JobStats {
+  revenue: number
+  laborCost: number
+  laborHours: number
+  profit: number
+  margin: number
+}
+
 // ─── Main portal page ──────────────────────────────────────────────────────────
 export default function PortalPage() {
   const { user, profile } = useAuth()
   const { employees, loading: empLoading } = useEmployees()
-  const { estimates, loading: estLoading } = useEstimates()
+  const { estimates, loading: estLoading, updateEstimate } = useEstimates()
   const { crews, crewMembers, loading: crewLoad } = useCrews()
   const { modules: trainingModules } = useTraining()
   const [tab, setTab] = useState<'today' | 'upcoming' | 'training'>('today')
+  const [completingJob, setCompletingJob] = useState<Estimate | null>(null)
+  const [jobStats, setJobStats] = useState<JobStats | null>(null)
+  const [statsLoading, setStatsLoading] = useState(false)
+  const [completing, setCompleting] = useState(false)
 
   const myEmployee = useMemo(
     () => employees.find(e => e.profile_id === user?.id),
@@ -183,13 +225,11 @@ export default function PortalPage() {
 
   const { entries, clockIn, clockOut } = useTimeEntries(myEmployee?.id)
 
-  // Active (clocked-in) time entry — no clock_out yet
   const activeEntry = useMemo(
     () => entries.find(e => !e.clock_out) ?? null,
     [entries]
   )
 
-  // My jobs: assigned directly or via crew
   const myJobs = useMemo(() => {
     return estimates.filter(e =>
       e.status === 'sold' &&
@@ -203,9 +243,11 @@ export default function PortalPage() {
   }, [estimates, user?.id, myCrewIds])
 
   const today = new Date().toISOString().split('T')[0]
-  const todayJobs = myJobs.filter(j => j.service_date === today)
-  const upcomingJobs = myJobs.filter(j => j.service_date && j.service_date > today)
-  const unscheduledJobs = myJobs.filter(j => !j.service_date)
+  const activeJobs = myJobs.filter(j => !j.completed_at)
+  const completedJobs = myJobs.filter(j => !!j.completed_at)
+  const todayJobs = activeJobs.filter(j => j.service_date === today)
+  const upcomingJobs = activeJobs.filter(j => j.service_date && j.service_date > today)
+  const unscheduledJobs = activeJobs.filter(j => !j.service_date)
   const publicModules = trainingModules.filter(m => m.is_public)
 
   async function handleClockIn(estimateId: string) {
@@ -217,6 +259,44 @@ export default function PortalPage() {
     await clockOut(entryId)
   }
 
+  async function openCompleteModal(job: Estimate) {
+    setCompletingJob(job)
+    setJobStats(null)
+    setStatsLoading(true)
+    const supabase = createClient()
+    const [{ data: timeEntries }, { data: payments }] = await Promise.all([
+      supabase.from('time_entries').select('*').eq('estimate_id', job.id),
+      supabase.from('payments').select('*').eq('estimate_id', job.id),
+    ])
+
+    const revenue = (payments ?? []).reduce((s: number, p: { amount: number }) => s + p.amount, 0)
+
+    let laborCost = 0
+    let laborHours = 0
+    for (const entry of (timeEntries ?? []) as { clock_in: string; clock_out: string | null; break_mins: number; employee_id: string }[]) {
+      if (!entry.clock_out) continue
+      const hrs = (new Date(entry.clock_out).getTime() - new Date(entry.clock_in).getTime()) / 3_600_000 - (entry.break_mins / 60)
+      laborHours += hrs
+      const emp = employees.find((e: Employee) => e.id === entry.employee_id)
+      if (emp?.pay_rate) laborCost += hrs * emp.pay_rate
+    }
+
+    const profit = revenue - laborCost
+    const margin = revenue > 0 ? (profit / revenue) * 100 : 0
+
+    setJobStats({ revenue, laborCost, laborHours, profit, margin })
+    setStatsLoading(false)
+  }
+
+  async function handleConfirmComplete() {
+    if (!completingJob) return
+    setCompleting(true)
+    await updateEstimate(completingJob.id, { completed_at: new Date().toISOString() })
+    setCompleting(false)
+    setCompletingJob(null)
+    setJobStats(null)
+  }
+
   const loading = empLoading || estLoading || crewLoad
   if (loading) return <><TopBar title="My Portal" /><div className="flex justify-center py-12"><Spinner size="lg" /></div></>
 
@@ -225,6 +305,10 @@ export default function PortalPage() {
   function getCrewName(crewId: string | null) {
     if (!crewId) return null
     return crews.find(c => c.id === crewId)?.name ?? null
+  }
+
+  function fmt(n: number) {
+    return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
   }
 
   return (
@@ -275,7 +359,7 @@ export default function PortalPage() {
           {/* ── TODAY ── */}
           {tab === 'today' && (
             <>
-              {todayJobs.length === 0 && unscheduledJobs.length === 0 && (
+              {todayJobs.length === 0 && unscheduledJobs.length === 0 && completedJobs.length === 0 && (
                 <div className="text-center py-12">
                   <CheckCircle className="w-12 h-12 text-gray-200 mx-auto mb-3" />
                   <p className="text-gray-500 font-medium">No jobs scheduled for today</p>
@@ -284,26 +368,26 @@ export default function PortalPage() {
               )}
 
               {todayJobs.map(job => (
-                <JobCard
-                  key={job.id}
-                  job={job}
-                  activeEntry={activeEntry}
-                  onClockIn={handleClockIn}
-                  onClockOut={handleClockOut}
-                />
+                <JobCard key={job.id} job={job} activeEntry={activeEntry}
+                  onClockIn={handleClockIn} onClockOut={handleClockOut} onComplete={openCompleteModal} />
               ))}
 
               {unscheduledJobs.length > 0 && (
                 <>
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1 pt-2">Unscheduled</p>
                   {unscheduledJobs.map(job => (
-                    <JobCard
-                      key={job.id}
-                      job={job}
-                          activeEntry={activeEntry}
-                      onClockIn={handleClockIn}
-                      onClockOut={handleClockOut}
-                    />
+                    <JobCard key={job.id} job={job} activeEntry={activeEntry}
+                      onClockIn={handleClockIn} onClockOut={handleClockOut} onComplete={openCompleteModal} />
+                  ))}
+                </>
+              )}
+
+              {completedJobs.length > 0 && (
+                <>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1 pt-2">Completed</p>
+                  {completedJobs.map(job => (
+                    <JobCard key={job.id} job={job} activeEntry={activeEntry}
+                      onClockIn={handleClockIn} onClockOut={handleClockOut} onComplete={openCompleteModal} isCompleted />
                   ))}
                 </>
               )}
@@ -320,13 +404,8 @@ export default function PortalPage() {
                 </div>
               )}
               {upcomingJobs.map(job => (
-                <JobCard
-                  key={job.id}
-                  job={job}
-                  activeEntry={activeEntry}
-                  onClockIn={handleClockIn}
-                  onClockOut={handleClockOut}
-                />
+                <JobCard key={job.id} job={job} activeEntry={activeEntry}
+                  onClockIn={handleClockIn} onClockOut={handleClockOut} onComplete={openCompleteModal} />
               ))}
             </>
           )}
@@ -377,6 +456,90 @@ export default function PortalPage() {
           )}
         </div>
       </div>
+
+      {/* ── Complete Job Modal ── */}
+      {completingJob && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end" onClick={() => !completing && setCompletingJob(null)}>
+          <div className="bg-white w-full rounded-t-3xl p-5 space-y-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-bold text-gray-900">Complete Job</p>
+                <p className="text-sm text-gray-500">{completingJob.customer_name}</p>
+              </div>
+              <button onClick={() => setCompletingJob(null)} className="p-2 text-gray-400">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {statsLoading && (
+              <div className="flex justify-center py-8"><Spinner size="lg" /></div>
+            )}
+
+            {!statsLoading && jobStats && (
+              <>
+                {/* Profitability grade */}
+                {jobStats.revenue > 0 ? (() => {
+                  const grade = profitGrade(jobStats.margin)
+                  return (
+                    <div className={`rounded-2xl border p-4 ${grade.bg} ${grade.border}`}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Award className={`w-5 h-5 ${grade.color}`} />
+                        <span className={`font-bold text-lg ${grade.color}`}>{grade.label}</span>
+                        <span className={`ml-auto text-2xl font-bold ${grade.color}`}>{Math.round(jobStats.margin)}%</span>
+                      </div>
+                      <div className="h-2 bg-white/60 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${jobStats.margin >= 35 ? 'bg-green-500' : jobStats.margin >= 20 ? 'bg-amber-400' : 'bg-red-400'}`}
+                          style={{ width: `${Math.min(100, Math.max(2, jobStats.margin))}%` }}
+                        />
+                      </div>
+                      <p className={`text-xs mt-1.5 ${grade.color} opacity-70`}>Profit margin</p>
+                    </div>
+                  )
+                })() : (
+                  <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 text-center">
+                    <p className="text-sm text-gray-500">No payments recorded — margin unavailable</p>
+                  </div>
+                )}
+
+                {/* Stats breakdown */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-green-50 rounded-xl p-3">
+                    <TrendingUp className="w-4 h-4 text-green-600 mb-1" />
+                    <p className="text-xs text-green-700 font-medium">Revenue</p>
+                    <p className="font-bold text-green-800">{fmt(jobStats.revenue)}</p>
+                  </div>
+                  <div className="bg-red-50 rounded-xl p-3">
+                    <DollarSign className="w-4 h-4 text-red-500 mb-1" />
+                    <p className="text-xs text-red-600 font-medium">Labor Cost</p>
+                    <p className="font-bold text-red-700">{fmt(jobStats.laborCost)}</p>
+                  </div>
+                  <div className={`rounded-xl p-3 col-span-2 ${jobStats.profit >= 0 ? 'bg-blue-50' : 'bg-orange-50'}`}>
+                    <p className={`text-xs font-medium ${jobStats.profit >= 0 ? 'text-blue-700' : 'text-orange-600'}`}>Gross Profit</p>
+                    <p className={`font-bold text-lg ${jobStats.profit >= 0 ? 'text-blue-800' : 'text-orange-700'}`}>{fmt(jobStats.profit)}</p>
+                    {jobStats.laborHours > 0 && (
+                      <p className="text-xs text-gray-400 mt-0.5">{jobStats.laborHours.toFixed(1)} hours logged · {fmt(jobStats.laborHours > 0 ? jobStats.revenue / jobStats.laborHours : 0)}/hr</p>
+                    )}
+                  </div>
+                </div>
+
+                {jobStats.laborCost === 0 && jobStats.laborHours === 0 && (
+                  <p className="text-xs text-gray-400 text-center">No time entries found — clock in/out to track labor cost</p>
+                )}
+              </>
+            )}
+
+            <button
+              onClick={handleConfirmComplete}
+              disabled={completing || statsLoading}
+              className="w-full py-3.5 bg-blue-600 text-white font-bold rounded-2xl active:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              <CheckCircle2 className="w-5 h-5" />
+              {completing ? 'Completing…' : 'Confirm Job Complete'}
+            </button>
+          </div>
+        </div>
+      )}
     </>
   )
 }
