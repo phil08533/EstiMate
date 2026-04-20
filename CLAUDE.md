@@ -423,3 +423,4 @@ EstiMate/
 - Free tier 25-estimate limit: warning banner at 20+, red banner + grayed FAB at 25, upgrade wall on the new estimate page
 - Employee edit modal: pencil icon on each org-tree row opens a pre-filled edit modal (name, role, manager, phone, email, pay, hire date, notes)
 - Notification polling: `useNotifications` now polls every 30 seconds via `setInterval` so contractors see quote responses and other alerts without a page refresh; interval is cleared on unmount
+- Create Estimate from CRM: lead detail has a "Create Estimate" button (pre-fills contact info, advances stage to estimate_scheduled); customer detail has a "New Estimate" button in Job History (pre-fills contact info, sets customer_id)
