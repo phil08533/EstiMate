@@ -203,6 +203,9 @@ EstiMate/
     │   ├── shared/
     │   │   ├── [token]/page.tsx
     │   │   └── notes/[token]/page.tsx
+    │   ├── portal/
+    │   │   ├── layout.tsx             ← Standalone auth layout (no SideNav/BottomNav, Sign Out button)
+    │   │   └── page.tsx               ← Employee portal: today's jobs, clock in/out, after photos, Complete Job modal, training
     │   ├── pay/[token]/
     │   │   ├── page.tsx
     │   │   └── PaymentClient.tsx
@@ -237,7 +240,7 @@ EstiMate/
     │       ├── help/page.tsx
     │       ├── team/page.tsx          ← alias → /settings/team
     │       ├── jobs/page.tsx          ← My Jobs / By Crew / Unscheduled / All tabs
-    │       ├── portal/page.tsx        ← Employee portal: today's jobs, clock in/out, after photos, Complete Job profitability modal, training
+    │       ├── portal/  ← REMOVED — moved to standalone route below
     │       ├── search/page.tsx        ← Global search across estimates, customers, notes, vendors
     │       ├── recurring/page.tsx     ← Recurring jobs: Due/Upcoming/Paused, auto-generate estimates
     │       ├── training/
@@ -424,3 +427,4 @@ EstiMate/
 - Employee edit modal: pencil icon on each org-tree row opens a pre-filled edit modal (name, role, manager, phone, email, pay, hire date, notes)
 - Notification polling: `useNotifications` now polls every 30 seconds via `setInterval` so contractors see quote responses and other alerts without a page refresh; interval is cleared on unmount
 - Create Estimate from CRM: lead detail has a "Create Estimate" button (pre-fills contact info, advances stage to estimate_scheduled); customer detail has a "New Estimate" button in Job History (pre-fills contact info, sets customer_id)
+- Employee portal moved to standalone `/portal` route (own layout, no SideNav/BottomNav, Sign Out button in top bar)
