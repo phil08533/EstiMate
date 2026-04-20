@@ -376,10 +376,13 @@ export interface Customer {
   notes: string | null
   source: string | null
   is_active: boolean
+  portal_token: string | null
   created_at: string
   updated_at: string
 }
-export type CustomerInsert = Omit<Customer, 'id' | 'created_at' | 'updated_at'>
+export type CustomerInsert = Omit<Customer, 'id' | 'created_at' | 'updated_at' | 'portal_token'> & {
+  portal_token?: string | null
+}
 
 export interface Lead {
   id: string
@@ -650,3 +653,27 @@ export interface TrainingCompletion {
   employee_id: string
   completed_at: string
 }
+
+// ─── Job Notes ────────────────────────────────────────────────────────────────
+export interface JobNote {
+  id: string
+  estimate_id: string
+  team_id: string
+  created_by: string
+  content: string
+  created_at: string
+}
+export type JobNoteInsert = Omit<JobNote, 'id' | 'created_at'>
+
+// ─── Equipment Assignments ────────────────────────────────────────────────────
+export interface EquipmentAssignment {
+  id: string
+  equipment_id: string
+  estimate_id: string
+  team_id: string
+  assigned_date: string
+  notes: string | null
+  created_by: string
+  created_at: string
+}
+export type EquipmentAssignmentInsert = Omit<EquipmentAssignment, 'id' | 'created_at'>

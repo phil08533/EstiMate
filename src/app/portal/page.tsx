@@ -5,6 +5,7 @@ import {
   ClipboardList, Camera, CheckCircle, MapPin,
   Play, Square, ChevronDown, BookOpen, ChevronRight, Users,
   TrendingUp, DollarSign, Award, X, CheckCircle2, LogOut,
+  MessageSquare, Send, Trash2,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -16,6 +17,7 @@ import { useCrews } from '@/lib/hooks/useCrews'
 import { useMedia } from '@/lib/hooks/useMedia'
 import { useTraining } from '@/lib/hooks/useTraining'
 import { useTeam } from '@/lib/hooks/useTeam'
+import { useJobNotes } from '@/lib/hooks/useJobNotes'
 import { createClient } from '@/lib/supabase/client'
 import type { Estimate, Employee } from '@/lib/types'
 
@@ -69,6 +71,61 @@ function AfterPhotoUploader({ estimateId }: { estimateId: string }) {
         className="hidden"
         onChange={e => handleFiles(e.target.files)}
       />
+    </div>
+  )
+}
+
+// ─── Field notes ──────────────────────────────────────────────────────────────
+function FieldNotesSection({ estimateId }: { estimateId: string }) {
+  const { notes, addNote, deleteNote } = useJobNotes(estimateId)
+  const [text, setText] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!text.trim()) return
+    setSaving(true)
+    try {
+      await addNote(text.trim())
+      setText('')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div>
+      <p className="text-xs font-semibold text-gray-500 mb-2 flex items-center gap-1.5">
+        <MessageSquare className="w-3.5 h-3.5" />
+        Field Notes
+      </p>
+      {notes.length > 0 && (
+        <div className="space-y-2 mb-2">
+          {notes.map(n => (
+            <div key={n.id} className="bg-white border border-gray-200 rounded-xl px-3 py-2 flex items-start gap-2">
+              <p className="flex-1 text-sm text-gray-800 whitespace-pre-wrap">{n.content}</p>
+              <button onClick={() => deleteNote(n.id)} className="text-gray-300 active:text-red-500 flex-shrink-0 mt-0.5">
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <form onSubmit={handleSubmit} className="flex gap-2">
+        <input
+          value={text}
+          onChange={e => setText(e.target.value)}
+          placeholder="Add a field note…"
+          className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <button
+          type="submit"
+          disabled={!text.trim() || saving}
+          className="px-3 py-2 bg-blue-600 text-white rounded-xl disabled:opacity-50 active:bg-blue-700"
+        >
+          <Send className="w-4 h-4" />
+        </button>
+      </form>
     </div>
   )
 }
@@ -157,6 +214,8 @@ function JobCard({ job, activeEntry, onClockIn, onClockOut, onComplete, isComple
                 <p className="text-xs font-semibold text-gray-500 mb-2">After photos</p>
                 <AfterPhotoUploader estimateId={job.id} />
               </div>
+
+              <FieldNotesSection estimateId={job.id} />
 
               <button
                 onClick={() => onComplete(job)}

@@ -177,7 +177,10 @@ EstiMate/
 │   ├── 018_subscriptions.sql        ← subscriptions (SaaS billing), auto-created on team insert
 │   ├── 019_quote_and_reminders.sql  ← estimates.quote_token + customer_response cols, reminder_settings, reminder_log
 │   ├── 020_notifications.sql        ← notifications (in-app)
-│   └── 026_line_item_categories.sql ← adds category TEXT column to estimate_line_items (labor/equipment/material/subs/other)
+│   ├── 026_line_item_categories.sql ← adds category TEXT column to estimate_line_items (labor/equipment/material/subs/other)
+│   ├── 027_job_notes.sql            ← job_notes table (employee field notes per estimate)
+│   ├── 028_equipment_assignments.sql ← equipment_assignments table (schedule equipment to jobs by date)
+│   └── 029_customer_portal.sql      ← portal_token on customers (public-facing customer portal)
 └── src/
     ├── middleware.ts                 ← session refresh; public paths: /login /auth/callback /shared /pay /quote /api/quote
     ├── app/
@@ -412,6 +415,9 @@ EstiMate/
 | 024 | Crews, crew_members, schedule_blocks + crew_id on estimates |
 | 025 | completed_at on estimates (job completion tracking) |
 | 026 | category column on estimate_line_items (labor/equipment/material/subs/other) |
+| 027 | job_notes table (employee field notes per estimate, used in portal) |
+| 028 | equipment_assignments table (schedule equipment to jobs by date) |
+| 029 | portal_token on customers (unique token for public customer portal) |
 
 ## Known Issues / TODOs
 - SMS reminders: UI toggle exists, `send_sms` stored — actual Twilio integration not yet wired
@@ -421,6 +427,10 @@ EstiMate/
 - Schedule drag-and-drop (true drag to reorder) is v2 — current UX is date picker + block form
 
 ## Recently Completed
+- Customer portal: `/customer/[token]` is a public page showing a customer's estimate/job history. Each `customers` row gets a unique `portal_token` (migration 029). "Copy customer portal link" button on the customer detail page. Public path added to middleware.
+- Equipment scheduling: Equipment page now has a Fleet/Schedule tab switcher. Schedule tab shows a weekly calendar of equipment assignments per day. "Assign Equipment" button links equipment to a job/estimate for a specific date. Migration 028 adds `equipment_assignments` table.
+- Material calculator → estimate: Results panel now has an "Add to Estimate" button. Pick any open estimate from a dropdown; the material line item (description + calculated cost) is added directly with category='material'.
+- Job field notes on portal: Each job card in the employee portal now has a "Field Notes" section (text input + list). Notes are stored in the new `job_notes` table (migration 027) and are visible to the whole team on the estimate.
 - LMN-style estimate builder: `LineItemsSection` fully rewritten with categorized line items (Labor/Equipment/Material/Subs/Other), a tabbed catalog drawer bottom sheet, employee/equipment integration, per-category subtotals, and a collapsible totals block. Migration `026_line_item_categories.sql` adds `category` column to `estimate_line_items`. Run migration in Supabase dashboard.
 - `estimates.customer_id` is written back to the estimate when Make Client is clicked (fixed in MakeClientButton)
 - Employee time reports: CSV export added to Time Tracking page (download button in top bar)
