@@ -26,6 +26,8 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [sendingLink, setSendingLink] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [printShowLineItems, setPrintShowLineItems] = useState(true)
+  const [printShowDescription, setPrintShowDescription] = useState(true)
 
   const loading = eLoading || liLoading || sLoading || pLoading
 
@@ -123,6 +125,21 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
         </button>
       </div>
 
+      {/* Print options */}
+      <div className="no-print bg-gray-50 border-b border-gray-200 px-4 py-2 flex items-center gap-4 overflow-x-auto">
+        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide flex-shrink-0">Print options:</span>
+        <label className="flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer flex-shrink-0">
+          <input type="checkbox" checked={printShowDescription} onChange={e => setPrintShowDescription(e.target.checked)}
+            className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600" />
+          Description
+        </label>
+        <label className="flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer flex-shrink-0">
+          <input type="checkbox" checked={printShowLineItems} onChange={e => setPrintShowLineItems(e.target.checked)}
+            className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600" />
+          Itemized prices
+        </label>
+      </div>
+
       {/* Invoice document */}
       <div className="max-w-2xl mx-auto p-4 print:p-0">
         <div className="bg-white shadow-sm rounded-2xl print:rounded-none print:shadow-none p-8 space-y-6" id="invoice">
@@ -168,74 +185,75 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
           </div>
 
           {/* Scope of work */}
-          {estimate.comments && (
+          {estimate.comments && printShowDescription && (
             <div className="bg-gray-50 rounded-xl p-4">
               <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">Scope of Work</p>
               <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{estimate.comments}</p>
             </div>
           )}
 
-          {/* Line items */}
-          {lineItems.length > 0 && (
-            <div>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b-2 border-gray-200 text-gray-500 text-xs uppercase">
-                    <th className="text-left pb-2 font-semibold">Description</th>
-                    <th className="text-right pb-2 font-semibold w-16">Qty</th>
-                    <th className="text-right pb-2 font-semibold w-24">Price</th>
-                    <th className="text-right pb-2 font-semibold w-24">Amount</th>
+          {/* Line items table — hideable */}
+          {lineItems.length > 0 && printShowLineItems && (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b-2 border-gray-200 text-gray-500 text-xs uppercase">
+                  <th className="text-left pb-2 font-semibold">Description</th>
+                  <th className="text-right pb-2 font-semibold w-16">Qty</th>
+                  <th className="text-right pb-2 font-semibold w-24">Price</th>
+                  <th className="text-right pb-2 font-semibold w-24">Amount</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {lineItems.map(li => (
+                  <tr key={li.id}>
+                    <td className="py-2.5 text-gray-800">
+                      {li.description}
+                      {li.tax_exempt && <span className="ml-1 text-xs text-amber-600">(exempt)</span>}
+                    </td>
+                    <td className="py-2.5 text-right text-gray-600">{li.quantity}</td>
+                    <td className="py-2.5 text-right text-gray-600">{fmt(li.unit_price)}</td>
+                    <td className="py-2.5 text-right font-medium text-gray-900">{fmt(li.quantity * li.unit_price)}</td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {lineItems.map(li => (
-                    <tr key={li.id}>
-                      <td className="py-2.5 text-gray-800">
-                        {li.description}
-                        {li.tax_exempt && <span className="ml-1 text-xs text-amber-600">(exempt)</span>}
-                      </td>
-                      <td className="py-2.5 text-right text-gray-600">{li.quantity}</td>
-                      <td className="py-2.5 text-right text-gray-600">{fmt(li.unit_price)}</td>
-                      <td className="py-2.5 text-right font-medium text-gray-900">{fmt(li.quantity * li.unit_price)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                ))}
+              </tbody>
+            </table>
+          )}
 
-              {/* Totals */}
-              <div className="mt-4 border-t border-gray-200 pt-4 space-y-1.5">
+          {/* Totals — always shown */}
+          {lineItems.length > 0 && (
+            <div className="border-t border-gray-200 pt-4 space-y-1.5">
+              {printShowLineItems && (
                 <div className="flex justify-between text-sm text-gray-600">
                   <span>Subtotal</span>
                   <span>{fmt(subtotal)}</span>
                 </div>
-                {taxRate > 0 && (
-                  <div className="flex justify-between text-sm text-gray-600">
-                    <span>Tax ({taxRate}%)</span>
-                    <span>{fmt(taxAmount)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between font-bold text-gray-900 text-base border-t border-gray-200 pt-1.5 mt-1.5">
-                  <span>Total Due</span>
-                  <span>{fmt(totalDue)}</span>
+              )}
+              {taxRate > 0 && (
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Tax ({taxRate}%)</span>
+                  <span>{fmt(taxAmount)}</span>
                 </div>
-
-                {payments.length > 0 && (
-                  <>
-                    {payments.map(p => (
-                      <div key={p.id} className="flex justify-between text-sm text-green-700">
-                        <span>Payment — {p.payment_method} ({p.payment_date})</span>
-                        <span>-{fmt(p.amount)}</span>
-                      </div>
-                    ))}
-                    <div className="flex justify-between font-bold text-base border-t border-gray-200 pt-1.5 mt-1.5">
-                      <span className={balance <= 0 ? 'text-green-700' : 'text-gray-900'}>Balance Due</span>
-                      <span className={balance <= 0 ? 'text-green-700' : 'text-gray-900'}>
-                        {balance <= 0 ? 'Paid in full' : fmt(balance)}
-                      </span>
-                    </div>
-                  </>
-                )}
+              )}
+              <div className="flex justify-between font-bold text-gray-900 text-base border-t border-gray-200 pt-1.5 mt-1.5">
+                <span>Total Due</span>
+                <span>{fmt(totalDue)}</span>
               </div>
+              {payments.length > 0 && (
+                <>
+                  {payments.map(p => (
+                    <div key={p.id} className="flex justify-between text-sm text-green-700">
+                      <span>Payment — {p.payment_method} ({p.payment_date})</span>
+                      <span>-{fmt(p.amount)}</span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between font-bold text-base border-t border-gray-200 pt-1.5 mt-1.5">
+                    <span className={balance <= 0 ? 'text-green-700' : 'text-gray-900'}>Balance Due</span>
+                    <span className={balance <= 0 ? 'text-green-700' : 'text-gray-900'}>
+                      {balance <= 0 ? 'Paid in full' : fmt(balance)}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
