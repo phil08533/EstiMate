@@ -208,6 +208,7 @@ export interface CompanySettings {
   website: string | null
   license_number: string | null
   tax_rate: number
+  default_markup_pct: number
   payment_terms: string | null
   footer_notes: string | null
   created_at: string
@@ -236,13 +237,18 @@ export interface EstimateLineItem {
   description: string
   quantity: number
   unit_price: number
+  unit_cost: number
+  markup_pct: number
   unit: string
   tax_exempt: boolean
   sort_order: number
   category: LineItemCategory
   created_at: string
 }
-export type EstimateLineItemInsert = Omit<EstimateLineItem, 'id' | 'created_at'>
+export type EstimateLineItemInsert = Omit<EstimateLineItem, 'id' | 'created_at' | 'unit_cost' | 'markup_pct'> & {
+  unit_cost?: number
+  markup_pct?: number
+}
 
 export type PaymentMethod = 'cash' | 'check' | 'card' | 'bank_transfer' | 'other'
 

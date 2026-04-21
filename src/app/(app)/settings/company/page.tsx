@@ -25,6 +25,7 @@ export default function CompanySettingsPage() {
     website: '',
     license_number: '',
     tax_rate: '',
+    default_markup_pct: '',
     payment_terms: 'Due on receipt',
     footer_notes: '',
     logo_scale: 1.0,
@@ -40,6 +41,7 @@ export default function CompanySettingsPage() {
       website: settings.website ?? '',
       license_number: settings.license_number ?? '',
       tax_rate: settings.tax_rate?.toString() ?? '0',
+      default_markup_pct: settings.default_markup_pct?.toString() ?? '0',
       payment_terms: settings.payment_terms ?? 'Due on receipt',
       footer_notes: settings.footer_notes ?? '',
       logo_scale: settings.logo_scale ?? 1.0,
@@ -82,6 +84,7 @@ export default function CompanySettingsPage() {
         website: form.website || null,
         license_number: form.license_number || null,
         tax_rate: parseFloat(form.tax_rate) || 0,
+        default_markup_pct: parseFloat(form.default_markup_pct) || 0,
         payment_terms: form.payment_terms || null,
         footer_notes: form.footer_notes || null,
         logo_scale: form.logo_scale,
@@ -156,7 +159,7 @@ export default function CompanySettingsPage() {
         {/* Billing defaults */}
         <div className="space-y-3">
           <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide px-1">Billing Defaults</p>
-          <div className="relative">
+          <div className="grid grid-cols-2 gap-3">
             <Input
               label="Default tax rate (%)"
               type="number"
@@ -168,6 +171,20 @@ export default function CompanySettingsPage() {
               onChange={set('tax_rate')}
               placeholder="0"
             />
+            <div>
+              <Input
+                label="Default markup (%)"
+                type="number"
+                inputMode="decimal"
+                step="1"
+                min="0"
+                max="1000"
+                value={form.default_markup_pct}
+                onChange={set('default_markup_pct')}
+                placeholder="0"
+              />
+              <p className="text-xs text-gray-400 mt-1 px-1">Applied automatically to new line items when cost is entered</p>
+            </div>
           </div>
           <Input label="Payment terms" value={form.payment_terms} onChange={set('payment_terms')} placeholder="Due on receipt" />
           <Textarea label="Footer note (appears on PDF)" value={form.footer_notes} onChange={set('footer_notes')} rows={3}

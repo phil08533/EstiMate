@@ -37,19 +37,59 @@ function fmt(n: number) {
 
 // ─── Inline qty/price editor on a line item row ────────────────────────────────
 
-function LineItemRow({ item, onUpdate, onDelete }: {
+function LineItemRow({ item, onUpdate, onDelete, defaultMarkup }: {
   item: EstimateLineItem
   onUpdate: (u: Partial<EstimateLineItem>) => Promise<void>
   onDelete: (id: string) => void
+  defaultMarkup: number
 }) {
   const [editing, setEditing] = useState(false)
   const [qty, setQty] = useState(item.quantity.toString())
   const [price, setPrice] = useState(item.unit_price.toString())
+  const [cost, setCost] = useState(item.unit_cost > 0 ? item.unit_cost.toString() : '')
+  const [markup, setMarkup] = useState(item.markup_pct > 0 ? item.markup_pct.toString() : defaultMarkup > 0 ? defaultMarkup.toString() : '')
   const [desc, setDesc] = useState(item.description)
   const cfg = CATEGORY_CFG[item.category] ?? CATEGORY_CFG.other
 
+  const costNum = parseFloat(cost) || 0
+  const markupNum = parseFloat(markup) || 0
+  const priceNum = parseFloat(price) || 0
+  const sellFromMarkup = costNum > 0 ? costNum * (1 + markupNum / 100) : 0
+  const profitPerUnit = priceNum - costNum
+  const marginPct = priceNum > 0 && costNum > 0 ? ((priceNum - costNum) / priceNum) * 100 : null
+
+  function handleCostChange(v: string) {
+    setCost(v)
+    const c = parseFloat(v) || 0
+    const m = parseFloat(markup) || 0
+    if (c > 0 && m > 0) {
+      setPrice((c * (1 + m / 100)).toFixed(2))
+    }
+  }
+
+  function handleMarkupChange(v: string) {
+    setMarkup(v)
+    const c = parseFloat(cost) || 0
+    const m = parseFloat(v) || 0
+    if (c > 0 && m > 0) {
+      setPrice((c * (1 + m / 100)).toFixed(2))
+    }
+  }
+
+  function upcharge10() {
+    const newMarkup = markupNum + 10
+    setMarkup(newMarkup.toString())
+    if (costNum > 0) setPrice((costNum * (1 + newMarkup / 100)).toFixed(2))
+  }
+
   async function save() {
-    await onUpdate({ description: desc, quantity: parseFloat(qty) || 0, unit_price: parseFloat(price) || 0 })
+    await onUpdate({
+      description: desc,
+      quantity: parseFloat(qty) || 0,
+      unit_price: parseFloat(price) || 0,
+      unit_cost: parseFloat(cost) || 0,
+      markup_pct: parseFloat(markup) || 0,
+    })
     setEditing(false)
   }
 
@@ -72,7 +112,36 @@ function LineItemRow({ item, onUpdate, onDelete }: {
             />
           </div>
           <div>
-            <label className="text-xs text-gray-400 block mb-1">Unit price ($)</label>
+            <label className="text-xs text-gray-400 block mb-1">Your cost ($)</label>
+            <input
+              type="number" inputMode="decimal" value={cost}
+              onChange={e => handleCostChange(e.target.value)}
+              placeholder="0.00"
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+
+        {/* Markup row */}
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="text-xs text-gray-400 block mb-1">Markup (%)</label>
+            <div className="flex gap-1">
+              <input
+                type="number" inputMode="decimal" value={markup}
+                onChange={e => handleMarkupChange(e.target.value)}
+                placeholder="0"
+                className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                type="button"
+                onClick={upcharge10}
+                className="px-2 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold active:bg-amber-100 whitespace-nowrap"
+              >+10%</button>
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-gray-400 block mb-1">Sell price ($)</label>
             <input
               type="number" inputMode="decimal" value={price}
               onChange={e => setPrice(e.target.value)}
@@ -80,6 +149,27 @@ function LineItemRow({ item, onUpdate, onDelete }: {
             />
           </div>
         </div>
+
+        {/* Margin summary */}
+        {costNum > 0 && priceNum > 0 && (
+          <div className={`flex items-center justify-between text-xs px-2 py-1.5 rounded-lg ${marginPct !== null && marginPct >= 30 ? 'bg-green-50 text-green-700' : marginPct !== null && marginPct >= 15 ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}`}>
+            <span>Cost {fmt(costNum)} → Sell {fmt(priceNum)}</span>
+            <span className="font-bold">
+              {marginPct !== null ? `${marginPct.toFixed(0)}% margin` : ''}
+              {profitPerUnit > 0 ? ` (+${fmt(profitPerUnit)}/unit)` : ''}
+            </span>
+          </div>
+        )}
+        {costNum > 0 && markupNum > 0 && sellFromMarkup !== priceNum && (
+          <button
+            type="button"
+            onClick={() => setPrice(sellFromMarkup.toFixed(2))}
+            className="text-xs text-blue-600 underline"
+          >
+            Apply markup → {fmt(sellFromMarkup)}
+          </button>
+        )}
+
         <div className="flex gap-2">
           <button onClick={save} className="flex-1 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg active:bg-blue-700">Save</button>
           <button onClick={() => setEditing(false)} className="flex-1 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg active:bg-gray-200">Cancel</button>
@@ -87,6 +177,11 @@ function LineItemRow({ item, onUpdate, onDelete }: {
       </div>
     )
   }
+
+  const hasCost = item.unit_cost > 0
+  const itemMargin = hasCost && item.unit_price > 0
+    ? ((item.unit_price - item.unit_cost) / item.unit_price) * 100
+    : null
 
   return (
     <button
@@ -96,7 +191,17 @@ function LineItemRow({ item, onUpdate, onDelete }: {
       <span className={`w-2 h-2 rounded-full flex-shrink-0 ${cfg.dot}`} />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-gray-900 truncate">{item.description}</p>
-        <p className="text-xs text-gray-400">{item.quantity} {item.unit} × {fmt(item.unit_price)}</p>
+        <p className="text-xs text-gray-400">
+          {item.quantity} {item.unit} × {fmt(item.unit_price)}
+          {hasCost && (
+            <span className="ml-1.5 text-gray-300">·</span>
+          )}
+          {hasCost && (
+            <span className={`ml-1.5 font-medium ${itemMargin !== null && itemMargin >= 30 ? 'text-green-600' : itemMargin !== null && itemMargin >= 15 ? 'text-amber-500' : 'text-red-500'}`}>
+              cost {fmt(item.unit_cost)} · {itemMargin !== null ? `${itemMargin.toFixed(0)}% margin` : ''}
+            </span>
+          )}
+        </p>
       </div>
       <p className="text-sm font-bold text-gray-900 flex-shrink-0">{fmt(item.quantity * item.unit_price)}</p>
       <button
@@ -114,7 +219,7 @@ function LineItemRow({ item, onUpdate, onDelete }: {
 function CatalogDrawer({ open, onClose, onAdd, serviceItems, addServiceItem, templates, applyTemplate, saveAsTemplate, currentItemCount }: {
   open: boolean
   onClose: () => void
-  onAdd: (item: { description: string; unit_price: number; unit: string; category: LineItemCategory }) => void
+  onAdd: (item: { description: string; unit_price: number; unit: string; category: LineItemCategory; unit_cost?: number }) => void
   serviceItems: ServiceItem[]
   addServiceItem: (input: Omit<ServiceItem, 'id' | 'created_at' | 'team_id'>) => Promise<ServiceItem>
   templates: { id: string; name: string; items: { description: string; quantity: number; unit_price: number; unit: string; tax_exempt: boolean; sort_order: number }[] }[]
@@ -128,6 +233,7 @@ function CatalogDrawer({ open, onClose, onAdd, serviceItems, addServiceItem, tem
   const [search, setSearch] = useState('')
   const [showNewForm, setShowNewForm] = useState(false)
   const [newName, setNewName] = useState('')
+  const [newCost, setNewCost] = useState('')
   const [newPrice, setNewPrice] = useState('')
   const [newUnit, setNewUnit] = useState('')
   const [saving, setSaving] = useState(false)
@@ -135,7 +241,7 @@ function CatalogDrawer({ open, onClose, onAdd, serviceItems, addServiceItem, tem
   const [templateName, setTemplateName] = useState('')
 
   useEffect(() => {
-    if (!open) { setSearch(''); setShowNewForm(false); setShowSaveTemplate(false) }
+    if (!open) { setSearch(''); setShowNewForm(false); setShowSaveTemplate(false); setNewName(''); setNewCost(''); setNewPrice(''); setNewUnit('') }
   }, [open])
 
   const q = search.toLowerCase()
@@ -189,8 +295,8 @@ function CatalogDrawer({ open, onClose, onAdd, serviceItems, addServiceItem, tem
       default_price: parseFloat(newPrice) || 0,
       category: cat,
     })
-    onAdd({ description: item.name, unit_price: item.default_price, unit: item.unit, category: cat })
-    setNewName(''); setNewPrice(''); setNewUnit('')
+    onAdd({ description: item.name, unit_price: item.default_price, unit: item.unit, category: cat, unit_cost: parseFloat(newCost) || 0 })
+    setNewName(''); setNewCost(''); setNewPrice(''); setNewUnit('')
     setShowNewForm(false)
     setSaving(false)
   }
@@ -404,12 +510,19 @@ function CatalogDrawer({ open, onClose, onAdd, serviceItems, addServiceItem, tem
                     placeholder="Name (e.g. Brown Mulch)"
                     className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
+                    <input
+                      value={newCost}
+                      onChange={e => setNewCost(e.target.value)}
+                      type="number" inputMode="decimal"
+                      placeholder="Cost ($)"
+                      className="px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                    />
                     <input
                       value={newPrice}
                       onChange={e => setNewPrice(e.target.value)}
                       type="number" inputMode="decimal"
-                      placeholder={`Price (${tab === 'labor' ? '$/hr' : tab === 'equipment' ? '$/day' : '$'})`}
+                      placeholder={`Sell (${tab === 'labor' ? '$/hr' : tab === 'equipment' ? '$/day' : '$'})`}
                       className="px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <input
@@ -481,9 +594,13 @@ export default function LineItemsSection({ estimateId }: { estimateId: string })
   const [showTotals, setShowTotals] = useState(true)
 
   const taxRate = settings?.tax_rate ?? 0
+  const defaultMarkup = settings?.default_markup_pct ?? 0
   const taxableSubtotal = lineItems.filter(li => !li.tax_exempt).reduce((s, li) => s + li.quantity * li.unit_price, 0)
   const taxAmount = taxableSubtotal * (taxRate / 100)
   const total = subtotal + taxAmount
+  const totalCost = lineItems.reduce((s, li) => s + (li.unit_cost ?? 0) * li.quantity, 0)
+  const grossProfit = subtotal - totalCost
+  const overallMargin = subtotal > 0 && totalCost > 0 ? (grossProfit / subtotal) * 100 : null
 
   // Group line items by category
   const grouped = useMemo(() => {
@@ -497,11 +614,15 @@ export default function LineItemsSection({ estimateId }: { estimateId: string })
     return order.map(cat => ({ cat, items: map.get(cat)! })).filter(g => g.items.length > 0)
   }, [lineItems])
 
-  async function handleAdd({ description, unit_price, unit, category }: { description: string; unit_price: number; unit: string; category: LineItemCategory }) {
+  async function handleAdd({ description, unit_price, unit, category, unit_cost }: { description: string; unit_price: number; unit: string; category: LineItemCategory; unit_cost?: number }) {
+    const cost = unit_cost ?? 0
+    const sell = cost > 0 && defaultMarkup > 0 ? parseFloat((cost * (1 + defaultMarkup / 100)).toFixed(2)) : unit_price
     await addLineItem({
       description,
       quantity: 1,
-      unit_price,
+      unit_price: sell,
+      unit_cost: cost,
+      markup_pct: cost > 0 && defaultMarkup > 0 ? defaultMarkup : 0,
       unit,
       tax_exempt: false,
       service_item_id: null,
@@ -561,6 +682,7 @@ export default function LineItemsSection({ estimateId }: { estimateId: string })
                   item={li}
                   onUpdate={u => updateLineItem(li.id, u)}
                   onDelete={deleteLineItem}
+                  defaultMarkup={defaultMarkup}
                 />
               ))}
             </div>
@@ -604,6 +726,12 @@ export default function LineItemsSection({ estimateId }: { estimateId: string })
                   </div>
                 )
               })}
+              {totalCost > 0 && overallMargin !== null && (
+                <div className={`flex justify-between text-xs font-semibold pt-1 border-t border-gray-100 ${overallMargin >= 30 ? 'text-green-600' : overallMargin >= 15 ? 'text-amber-600' : 'text-red-500'}`}>
+                  <span>Total cost {fmt(totalCost)} · Profit {fmt(grossProfit)}</span>
+                  <span>{overallMargin.toFixed(0)}% margin</span>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -622,7 +750,7 @@ export default function LineItemsSection({ estimateId }: { estimateId: string })
       <CatalogDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        onAdd={async (item) => { await handleAdd(item) }}
+        onAdd={async item => { await handleAdd(item) }}
         serviceItems={serviceItems}
         addServiceItem={addServiceItem}
         templates={templates}
