@@ -55,6 +55,7 @@ export default async function QuotePage({ params }: { params: { token: string } 
       total={total}
       token={params.token}
       photos={photoUrls}
+      showLineItems={estimate.quote_show_line_items ?? true}
     />
   )
 }
