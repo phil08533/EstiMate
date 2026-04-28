@@ -19,18 +19,21 @@ Full-service field operations platform for landscaping and contracting businesse
 - **Estimated hours** — log expected hours per job for scheduling and profitability tracking
 - **Templates** — save a set of line items as a reusable template for common job types
 - **Sort & filter** — search by name, filter by status, sort by date / area / name
+- **Inline description editor** — Description tab on estimate detail is an editable textarea that auto-saves on blur; same description appears at the top of the Quote tab so scope of work is always visible when building a quote
 
 ### Customer Quote Flow
 - **Send quote** — generate a unique link and email the quote to the customer
 - **Customer quote page** — no login required; customer sees line items, total, and project photos
 - **Accept / Decline / Request changes** — customer taps a response; contractor is notified instantly
 - **Auto-advance status** — Accept → Sold, Decline → Lost automatically
+- **Quote visibility toggle** — Eye/EyeOff toggle on the Quote tab controls whether the customer sees itemized line items or just the final total; persists to DB via `quote_show_line_items`
 - **Quote photos** — attach before/design photos directly on the customer-facing quote page
 
 ### Invoice & PDF
 - **Invoice view** — clean printable invoice with company branding (logo, contact info)
 - **Scalable logo** — adjust logo size on the PDF from company settings
 - **Payment summary** — shows total due, payments received, and balance due
+- **Print options** — "Print options" bar with checkboxes to include/exclude Description and Itemized prices from the printed PDF; total is always included
 - **Save as PDF** — browser print-to-PDF
 
 ### Payments & Finances
@@ -193,6 +196,7 @@ Run all migrations **in order** via Supabase Dashboard → SQL Editor:
 | `027_job_notes.sql` | job_notes table — employee field notes per estimate |
 | `028_equipment_assignments.sql` | equipment_assignments — schedule equipment to jobs by date |
 | `029_customer_portal.sql` | portal_token on customers — unique token for public customer portal |
+| `030_quote_visibility.sql` | quote_show_line_items on estimates — controls whether customer quote page shows itemized line items |
 
 ---
 

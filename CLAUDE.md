@@ -93,6 +93,7 @@ Color map (in `src/lib/utils/status.ts`):
 - `share_tokens` allow unauthenticated read-only access to a team's estimates
 - `note_shares` allow unauthenticated read-only access to team notes (note_id=null) or one note
 - `estimates.quote_token` is a unique per-estimate token for the customer quote page
+- `estimates.quote_show_line_items` (BOOLEAN DEFAULT true) — when false, customer quote page shows only the total, not individual line items
 - `estimates.completed_at` — null = active job, non-null = completed; status stays 'sold'
 - `schedule_blocks` — detail hour allocation per day per job; separate from `service_date` which is the primary start date
 - `training_completions` — unique on (item_id, employee_id); toggled by `useTrainingItems.toggleCompletion`
@@ -180,7 +181,8 @@ EstiMate/
 │   ├── 026_line_item_categories.sql ← adds category TEXT column to estimate_line_items (labor/equipment/material/subs/other)
 │   ├── 027_job_notes.sql            ← job_notes table (employee field notes per estimate)
 │   ├── 028_equipment_assignments.sql ← equipment_assignments table (schedule equipment to jobs by date)
-│   └── 029_customer_portal.sql      ← portal_token on customers (public-facing customer portal)
+│   ├── 029_customer_portal.sql      ← portal_token on customers (public-facing customer portal)
+│   └── 030_quote_visibility.sql     ← quote_show_line_items BOOLEAN on estimates
 └── src/
     ├── middleware.ts                 ← session refresh; public paths: /login /auth/callback /shared /pay /quote /api/quote
     ├── app/
@@ -418,6 +420,7 @@ EstiMate/
 | 027 | job_notes table (employee field notes per estimate, used in portal) |
 | 028 | equipment_assignments table (schedule equipment to jobs by date) |
 | 029 | portal_token on customers (unique token for public customer portal) |
+| 030 | quote_show_line_items on estimates — hides/shows itemized line items on customer quote page |
 
 ## Known Issues / TODOs
 - SMS reminders: UI toggle exists, `send_sms` stored — actual Twilio integration not yet wired
@@ -427,6 +430,9 @@ EstiMate/
 - Schedule drag-and-drop (true drag to reorder) is v2 — current UX is date picker + block form
 
 ## Recently Completed
+- Inline description editor: Description tab on estimate detail is an editable textarea that auto-saves on blur; description also shown at the top of the Quote tab so scope of work is visible when building a quote.
+- Quote visibility controls: Eye/EyeOff toggle on the Quote tab sets `quote_show_line_items` (migration 030). When off, the customer quote page shows only the total (larger font) instead of individual line items; description moves to the top of the quote page above the details block.
+- Invoice print options: "Print options" bar on the invoice page lets users toggle Description and Itemized prices before printing to PDF; total is always included regardless of toggles.
 - Customer portal: `/customer/[token]` is a public page showing a customer's estimate/job history. Each `customers` row gets a unique `portal_token` (migration 029). "Copy customer portal link" button on the customer detail page. Public path added to middleware.
 - Equipment scheduling: Equipment page now has a Fleet/Schedule tab switcher. Schedule tab shows a weekly calendar of equipment assignments per day. "Assign Equipment" button links equipment to a job/estimate for a specific date. Migration 028 adds `equipment_assignments` table.
 - Material calculator → estimate: Results panel now has an "Add to Estimate" button. Pick any open estimate from a dropdown; the material line item (description + calculated cost) is added directly with category='material'.
